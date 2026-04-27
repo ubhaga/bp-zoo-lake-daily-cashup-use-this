@@ -1,0 +1,1 @@
+ALTER TABLE public.manager_daily_entries ADD COLUMN deep_frozen_cc numeric NOT NULL DEFAULT 0;

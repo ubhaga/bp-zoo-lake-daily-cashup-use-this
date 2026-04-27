@@ -1,0 +1,1 @@
+ALTER TABLE public.manager_daily_entries ADD COLUMN bank_charges_rate NUMERIC NOT NULL DEFAULT 37.9;
