@@ -1,4 +1,4 @@
-/**
+import { isNetAccContent, extractNetAccPayouts } from './dayEndNetAcc';
  * Extract the "Payouts" amount from the Daily Takings Summary section
  * of an uploaded day-end (.rpt) report.
  *
