@@ -191,3 +191,45 @@ export function extractNetAccSafeDepositsTotal(content: string): number | null {
   if (!m) return null;
   return num(m[1]);
 }
+
+/* ---------- 6. Cash Reconciliation → Pay Outs (positive) ----------
+ * Section example:
+ *   Cash Reconciliation
+ *   Description Amount
+ *   Cash Sales 9079.70
+ *   Pay Ins (Cash Only) 0.00
+ *   Pay Outs 0.00
+ * Returned as a positive number for use as Day End Payouts.
+ */
+export function extractNetAccPayouts(content: string): number | null {
+  if (!content) return null;
+  const text = normalize(content);
+  const idx = text.search(/Cash Reconciliation/i);
+  if (idx < 0) return null;
+  const scope = text.slice(idx, idx + 1500);
+  const m = scope.match(/^Pay\s*Outs\s+(-?[\d,]+\.\d{2})/m);
+  if (!m) return null;
+  return Math.abs(num(m[1]));
+}
+
+/* ---------- 7. Shift # ---------- */
+export function extractNetAccShiftNumber(content: string): number | null {
+  if (!content) return null;
+  const text = normalize(content);
+  const m = text.match(/SHIFT\s*#\s*(\d+)/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/* ---------- 8. Cashier name ---------- */
+export function extractNetAccCashierName(content: string): string | null {
+  if (!content) return null;
+  const text = normalize(content);
+  const m = text.match(/^Cashier\s*:\s*([^\n]+)$/im);
+  if (!m) return null;
+  const name = m[1].trim();
+  if (!name) return null;
+  // Title-case so KARABO -> Karabo
+  return name.toLowerCase().split(/\s+/).map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
+}
