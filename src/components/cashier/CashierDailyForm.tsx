@@ -486,8 +486,8 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     if (!form.enteredBy.trim()) missing.push("Entered By");
     if (!form.cashierName.trim()) missing.push("Cashier");
     if (!form.shopShiftNumber) missing.push("Shop Shift #");
-    if (!form.optShiftNumber) missing.push("OPT Shift #");
-    if (!form.shop.income && !form.opt.income) missing.push("Income (Gross Sales) — at least one shift required");
+    if (showSecondShift && !form.optShiftNumber) missing.push("OPT Shift #");
+    if (!form.shop.income && (!showSecondShift || !form.opt.income)) missing.push("Income (Gross Sales) — at least one shift required");
 
     if (missing.length > 0) {
       toast({
