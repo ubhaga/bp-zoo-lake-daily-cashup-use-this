@@ -1,8 +1,27 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { parsePumpVariance, type PumpVarianceRow } from '@/lib/fuelReportParser';
+import { isNetAccContent, extractNetAccPumpSales } from '@/lib/dayEndNetAcc';
 import { format, subDays, parseISO } from 'date-fns';
 import { useMasterDataStore, getTankColor } from '@/store/masterDataStore';
+
+/** Adapt NetAcc Totalisors rows into PumpVarianceRow shape so MeterSalesControl
+ *  can render them with the same UI. NetAcc only provides volume sold, so
+ *  unknown fields are left at 0 (the manual readings fill in actuals). */
+function netAccToPumpVarianceRows(content: string): PumpVarianceRow[] {
+  return extractNetAccPumpSales(content).map((r) => ({
+    pumpNo: r.pumpNo,
+    gradeId: r.gradeId,
+    gradeDescription: r.gradeDescription,
+    startReading: 0,
+    endReading: 0,
+    calculatedVolume: r.volumeSold,
+    actualVolume: r.volumeSold,
+    volumeVariance: 0,
+    unsettledVolume: 0,
+    incUnsettledVariance: 0,
+  }));
+}
 
 interface Props {
   selectedDate: string;
@@ -46,7 +65,9 @@ export function MeterSalesControl({ selectedDate }: Props) {
     if (uploadsRes.data) {
       const parsed: DayPumpData[] = uploadsRes.data.map(d => ({
         date: d.date,
-        rows: parsePumpVariance(d.content),
+        rows: isNetAccContent(d.content)
+          ? netAccToPumpVarianceRows(d.content)
+          : parsePumpVariance(d.content),
       })).filter(d => d.rows.length > 0);
       setDayData(parsed);
     } else {
