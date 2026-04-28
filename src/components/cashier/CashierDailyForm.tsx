@@ -938,7 +938,21 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
           <CurrencyInput value={form.shop.coins} onChange={(v) => setShop({ coins: v })} />
         </div>
         <div className="flex items-center justify-between px-3 py-1.5 bg-secondary font-semibold text-sm">
-          <span>Cash Connect Total (Sum)</span>
+          <span className="flex items-center gap-2">
+            Cash Connect Total (Sum)
+            {netAccSafeDepositsTotal != null && (
+              <span
+                className={`text-xs font-normal px-2 py-0.5 rounded ${
+                  Math.abs(netAccSafeDepositsTotal - cashConnectTotal) < 0.01
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+                title="NetAcc Manual Safe Deposits TOTAL — validation reference (not used in calculations)"
+              >
+                Safe deposits: {netAccSafeDepositsTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </span>
           <CurrencyDisplay value={cashConnectTotal} highlight />
         </div>
       </div>
