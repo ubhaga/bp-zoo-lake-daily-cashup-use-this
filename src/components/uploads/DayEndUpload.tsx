@@ -55,6 +55,10 @@ function extractBatchDate(content: string): string | null {
 }
 
 export function DayEndUpload({ filterMonth }: Props) {
+  const siteSystem = useMasterDataStore(s => s.siteSystem);
+  const isNetAcc = siteSystem === 'NetAcc';
+  const acceptAttr = isNetAcc ? '.pdf' : '.rpt,.txt';
+
   const [uploads, setUploads] = useState<DayEndRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [mismatchDialog, setMismatchDialog] = useState<{
@@ -123,10 +127,25 @@ export function DayEndUpload({ filterMonth }: Props) {
   };
 
   const handleFileUpload = async (date: string, file: File) => {
-    const raw = await file.text();
-    const text = stripPageBreaks(raw);
-    const batchDate = extractBatchDate(text);
+    setLoading(true);
+    let text: string;
+    try {
+      if (isNetAcc || /\.pdf$/i.test(file.name)) {
+        // NetAcc PDF — extract text via pdfjs-dist and prepend marker.
+        const extracted = await extractPdfText(file);
+        text = `${NETACC_MARKER}\n${extracted}`;
+      } else {
+        const raw = await file.text();
+        text = stripPageBreaks(raw);
+      }
+    } catch (e) {
+      setLoading(false);
+      toast({ title: 'Could not read file', description: String(e), variant: 'destructive' });
+      return;
+    }
+    setLoading(false);
 
+    const batchDate = extractBatchDate(text);
     if (batchDate && batchDate !== date) {
       setMismatchDialog({ targetDate: date, batchDate, file, text });
       return;
