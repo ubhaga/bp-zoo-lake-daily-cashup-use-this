@@ -395,6 +395,28 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     else setForm((f) => ({ ...f, eftInvoices: f.eftInvoices.filter((i) => i.id !== id) }));
   };
 
+  const moveInvoice = (id: string, from: "payout" | "eft") => {
+    setForm((f) => {
+      if (from === "payout") {
+        const invoice = f.payoutInvoices.find((i) => i.id === id);
+        if (!invoice) return f;
+        return {
+          ...f,
+          payoutInvoices: f.payoutInvoices.filter((i) => i.id !== id),
+          eftInvoices: [...f.eftInvoices, invoice],
+        };
+      }
+
+      const invoice = f.eftInvoices.find((i) => i.id === id);
+      if (!invoice) return f;
+      return {
+        ...f,
+        eftInvoices: f.eftInvoices.filter((i) => i.id !== id),
+        payoutInvoices: [...f.payoutInvoices, invoice],
+      };
+    });
+  };
+
   const updateInvoice = (id: string, patch: Partial<InvoiceLine>, type: "payout" | "eft") => {
     const defaultCatMap = type === "payout" ? payoutSupplierCategories : eftSupplierCategories;
     const update = (lines: InvoiceLine[]) =>
