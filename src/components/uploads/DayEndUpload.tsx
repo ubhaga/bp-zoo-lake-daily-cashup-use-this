@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Upload, FileText, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format, getDaysInMonth, parse } from 'date-fns';
+import { useMasterDataStore } from '@/store/masterDataStore';
+import { extractPdfText } from '@/lib/pdfText';
+import { NETACC_MARKER, extractNetAccBatchDate, isNetAccContent } from '@/lib/dayEndNetAcc';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,8 +39,11 @@ function stripPageBreaks(content: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-/** Extract Batch Date from RPT file content — looks for "Batch Date   : dd/MM/yyyy" */
+/** Extract Batch Date from any uploaded report (Branch .rpt or NetAcc PDF). */
 function extractBatchDate(content: string): string | null {
+  if (isNetAccContent(content)) {
+    return extractNetAccBatchDate(content);
+  }
   const m = content.match(/Batch\s+Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (!m) return null;
   try {
@@ -49,6 +55,10 @@ function extractBatchDate(content: string): string | null {
 }
 
 export function DayEndUpload({ filterMonth }: Props) {
+  const siteSystem = useMasterDataStore(s => s.siteSystem);
+  const isNetAcc = siteSystem === 'NetAcc';
+  const acceptAttr = isNetAcc ? '.pdf' : '.rpt,.txt';
+
   const [uploads, setUploads] = useState<DayEndRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [mismatchDialog, setMismatchDialog] = useState<{
@@ -117,10 +127,25 @@ export function DayEndUpload({ filterMonth }: Props) {
   };
 
   const handleFileUpload = async (date: string, file: File) => {
-    const raw = await file.text();
-    const text = stripPageBreaks(raw);
-    const batchDate = extractBatchDate(text);
+    setLoading(true);
+    let text: string;
+    try {
+      if (isNetAcc || /\.pdf$/i.test(file.name)) {
+        // NetAcc PDF — extract text via pdfjs-dist and prepend marker.
+        const extracted = await extractPdfText(file);
+        text = `${NETACC_MARKER}\n${extracted}`;
+      } else {
+        const raw = await file.text();
+        text = stripPageBreaks(raw);
+      }
+    } catch (e) {
+      setLoading(false);
+      toast({ title: 'Could not read file', description: String(e), variant: 'destructive' });
+      return;
+    }
+    setLoading(false);
 
+    const batchDate = extractBatchDate(text);
     if (batchDate && batchDate !== date) {
       setMismatchDialog({ targetDate: date, batchDate, file, text });
       return;
@@ -158,7 +183,9 @@ export function DayEndUpload({ filterMonth }: Props) {
             <FileText className="h-4 w-4" />
             Day End Reports — {format(new Date(year, month - 1), 'MMMM yyyy')}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Upload .rpt day end files for each day</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Upload {isNetAcc ? 'NetAcc PDF' : '.rpt'} day end {isNetAcc ? 'reports' : 'files'} for each day
+          </p>
         </div>
         <div className="divide-y max-h-[500px] overflow-y-auto">
           {dates.map(date => {
@@ -188,7 +215,7 @@ export function DayEndUpload({ filterMonth }: Props) {
                     </span>
                     <label className="cursor-pointer text-xs text-primary hover:underline">
                       Replace
-                      <input type="file" accept=".rpt,.txt" className="hidden" onChange={(e) => {
+                      <input type="file" accept={acceptAttr} className="hidden" onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) handleFileUpload(date, f);
                         e.target.value = '';
@@ -202,7 +229,7 @@ export function DayEndUpload({ filterMonth }: Props) {
                   <label className={`cursor-pointer flex items-center gap-1.5 text-xs text-primary hover:underline ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <Upload className="h-3.5 w-3.5" />
                     Upload
-                    <input type="file" accept=".rpt,.txt" className="hidden" onChange={(e) => {
+                    <input type="file" accept={acceptAttr} className="hidden" onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) handleFileUpload(date, f);
                       e.target.value = '';

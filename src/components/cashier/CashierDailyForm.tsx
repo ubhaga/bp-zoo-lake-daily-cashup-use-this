@@ -32,6 +32,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractDayEndPayouts } from "@/lib/dayEndPayouts";
 import { extractCashierDailyAutofill } from "@/lib/dayEndPayouts";
 import { extractDayEndDebtors } from "@/lib/dayEndDebtors";
+import {
+  isNetAccContent,
+  extractNetAccDebtors,
+  extractNetAccBpRewards,
+  extractNetAccSalesTotal,
+  extractNetAccSafeDepositsTotal,
+} from "@/lib/dayEndNetAcc";
 
 const DAY_END_PAYOUTS_CUTOFF = "2026-03-01";
 const DAY_END_PAYOUT_VENDOR = "Day End Payouts";
@@ -239,6 +246,9 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   // Track the upload's updated_at so we re-sync only when the report changes.
   const lastSyncedRef = useRef<{ date: string; updatedAt: string } | null>(null);
 
+  // Validation badge: NetAcc Manual Safe Deposits TOTAL shown next to Cash Connect Total (sum)
+  const [netAccSafeDepositsTotal, setNetAccSafeDepositsTotal] = useState<number | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -247,18 +257,59 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         .select("content, updated_at")
         .eq("date", selectedDate)
         .maybeSingle();
-      if (cancelled || !data?.content) return;
+      if (cancelled || !data?.content) {
+        if (!cancelled) setNetAccSafeDepositsTotal(null);
+        return;
+      }
 
       const updatedAt = (data as { updated_at: string }).updated_at;
       const last = cashierAutofillSyncRef.current;
-      if (last && last.date === selectedDate && last.updatedAt === updatedAt) return;
-      cashierAutofillSyncRef.current = { date: selectedDate, updatedAt };
+      const alreadySynced =
+        last && last.date === selectedDate && last.updatedAt === updatedAt;
 
-      const autofill = extractCashierDailyAutofill(data.content);
-      if (!autofill) return;
+      const isNetAcc = isNetAccContent(data.content);
+
+      // Refresh safe-deposit badge whenever content changes (cheap)
+      setNetAccSafeDepositsTotal(isNetAcc ? extractNetAccSafeDepositsTotal(data.content) : null);
+
+      if (alreadySynced) return;
+      cashierAutofillSyncRef.current = { date: selectedDate, updatedAt };
 
       const previousCashup = getCashupByDate(format(subDays(parseISO(selectedDate), 1), "yyyy-MM-dd"));
       const previousReturns = Math.abs(previousCashup?.shop.returnsNotCaptured ?? 0);
+
+      if (isNetAcc) {
+        // NetAcc: single combined file populates Shop Till income only.
+        // OPT shift is entered manually.
+        const salesTotal = extractNetAccSalesTotal(data.content);
+        if (salesTotal == null) return;
+
+        const bpRewards = extractNetAccBpRewards(data.content);
+
+        setForm((f) => {
+          const shopSpeedpoints = f.shop.speedpoints.map((sp) => {
+            if (bpRewards && sp.terminal.toLowerCase() === 'redeem') {
+              return { ...sp, batchNo: bpRewards.batch, shopAmount: bpRewards.amount };
+            }
+            return sp;
+          });
+          return {
+            ...f,
+            shop: {
+              ...f.shop,
+              income: salesTotal,
+              returns: previousReturns,
+              returns_mop: previousReturns > 0 ? -previousReturns : f.shop.returns_mop,
+              speedpoints: shopSpeedpoints,
+            },
+          };
+        });
+        return;
+      }
+
+      // Branch (.rpt) flow — original autofill
+      const autofill = extractCashierDailyAutofill(data.content);
+      if (!autofill) return;
       const matchedCashier = resolveCashierName(autofill.cashierName, CASHIER_NAMES);
 
       setForm((f) => ({
@@ -297,7 +348,12 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
       if (last && last.date === selectedDate && last.updatedAt === updatedAt) return;
       lastSyncedRef.current = { date: selectedDate, updatedAt };
 
-      const debtors = extractDayEndDebtors(data.content);
+      // Format-aware debtors extraction. NetAcc returns one row per invoice
+      // (same Account Holder may appear multiple times); Branch returns rows
+      // from the EOD Debtors Transactions block.
+      const debtors = isNetAccContent(data.content)
+        ? extractNetAccDebtors(data.content).map(d => ({ accountName: d.accountName, amount: d.amount }))
+        : extractDayEndDebtors(data.content);
       if (debtors.length === 0) return;
 
       // Auto-add any new account names to Master Data (case-insensitive check)
@@ -882,7 +938,21 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
           <CurrencyInput value={form.shop.coins} onChange={(v) => setShop({ coins: v })} />
         </div>
         <div className="flex items-center justify-between px-3 py-1.5 bg-secondary font-semibold text-sm">
-          <span>Cash Connect Total (Sum)</span>
+          <span className="flex items-center gap-2">
+            Cash Connect Total (Sum)
+            {netAccSafeDepositsTotal != null && (
+              <span
+                className={`text-xs font-normal px-2 py-0.5 rounded ${
+                  Math.abs(netAccSafeDepositsTotal - cashConnectTotal) < 0.01
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+                title="NetAcc Manual Safe Deposits TOTAL — validation reference (not used in calculations)"
+              >
+                Safe deposits: {netAccSafeDepositsTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </span>
           <CurrencyDisplay value={cashConnectTotal} highlight />
         </div>
       </div>
