@@ -1339,6 +1339,9 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         </div>
       </div>
 
+      </div>
+      {/* end .cashier-no-opt wrapper */}
+
       {/* ─── EXPLANATIONS / NOTES ─── */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-muted px-3 py-2 font-semibold text-sm border-b">Explanations / Notes</div>
