@@ -220,3 +220,18 @@ All colors MUST be HSL.
   border-collapse: separate;
   border-spacing: 0;
 }
+
+/* ─── Cashier Daily — Hide OPT / Second Shift column ───
+ * Used by NetAcc sites where there is no OPT shift by default.
+ * Collapses every shop+opt grid-cols-2 row inside the wrapped section
+ * to a single column and hides the right (even-indexed) child.
+ */
+.cashier-no-opt .grid.grid-cols-2 {
+  grid-template-columns: 1fr !important;
+}
+.cashier-no-opt .grid.grid-cols-2 > :nth-child(2) {
+  display: none !important;
+}
+.cashier-no-opt .divide-x > * {
+  border-left-width: 0 !important;
+}
