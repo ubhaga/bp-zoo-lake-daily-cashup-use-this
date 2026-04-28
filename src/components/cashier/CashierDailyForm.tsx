@@ -350,7 +350,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, CASHIER_NAMES, getCashupByDate]);
+  }, [selectedDate, CASHIER_NAMES, getCashupByDate, addCashierName]);
 
   useEffect(() => {
     let cancelled = false;
