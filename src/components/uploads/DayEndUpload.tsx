@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Upload, FileText, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format, getDaysInMonth, parse } from 'date-fns';
+import { useMasterDataStore } from '@/store/masterDataStore';
+import { extractPdfText } from '@/lib/pdfText';
+import { NETACC_MARKER, extractNetAccBatchDate, isNetAccContent } from '@/lib/dayEndNetAcc';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,8 +39,11 @@ function stripPageBreaks(content: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-/** Extract Batch Date from RPT file content — looks for "Batch Date   : dd/MM/yyyy" */
+/** Extract Batch Date from any uploaded report (Branch .rpt or NetAcc PDF). */
 function extractBatchDate(content: string): string | null {
+  if (isNetAccContent(content)) {
+    return extractNetAccBatchDate(content);
+  }
   const m = content.match(/Batch\s+Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (!m) return null;
   try {
