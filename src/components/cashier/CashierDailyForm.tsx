@@ -526,7 +526,9 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
     // --- Speedpoints: batch# mandatory if amount entered ---
     const shopSpBad = form.shop.speedpoints.filter((s) => s.shopAmount !== 0 && !s.batchNo.trim());
-    const optSpBad = form.opt.speedpoints.filter((s) => s.optAmount !== 0 && !s.batchNo.trim());
+    const optSpBad = showSecondShift
+      ? form.opt.speedpoints.filter((s) => s.optAmount !== 0 && !s.batchNo.trim())
+      : [];
     const allSpBad = [...shopSpBad.map((s) => `Shop — ${s.terminal}`), ...optSpBad.map((s) => `OPT — ${s.terminal}`)];
     if (allSpBad.length > 0) {
       toast({
