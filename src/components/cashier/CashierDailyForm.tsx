@@ -112,6 +112,8 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const { getCashupByDate, addCashup, updateCashup } = useCashupStore();
   const { payoutSuppliers, accounts: ACCOUNTS, cashierNames: CASHIER_NAMES, speedpointTerminals } = useMasterDataStore();
   const addCashierName = useMasterDataStore(s => s.addCashierName);
+  const siteSystem = useMasterDataStore(s => s.siteSystem);
+  const isNetAccSite = siteSystem === 'NetAcc';
   const SUPPLIERS = payoutSuppliers;
   const existing = getCashupByDate(selectedDate);
   const isLocked = selectedDate < "2026-01-01";
@@ -138,6 +140,25 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [overConfirmOpen, setOverConfirmOpen] = useState(false);
+
+  /** Whether the second (OPT-style) shift is shown.
+   *  Branch sites: always shown.
+   *  NetAcc sites: hidden by default; user opts in via the "Add second shift" tab.
+   *  If an existing record already has OPT data we keep it visible so users can edit. */
+  const hasExistingOptData =
+    !!existing &&
+    (existing.optShiftNumber > 0 ||
+      existing.opt.income !== 0 ||
+      existing.opt.speedpoints.some((s) => s.optAmount !== 0) ||
+      (existing.opt.accounts ?? []).some((a) => a.amount !== 0));
+  const [showSecondShift, setShowSecondShift] = useState<boolean>(
+    !isNetAccSite || hasExistingOptData,
+  );
+  // Re-evaluate default when navigating between dates / records
+  useEffect(() => {
+    setShowSecondShift(!isNetAccSite || hasExistingOptData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, existing?.id, isNetAccSite]);
 
   useEffect(() => {
     if (existing) {
@@ -450,8 +471,13 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const optDifference = optTotalTakings - optSpeedpointTotal - optAccountTotal;
 
   const commitSave = () => {
-    if (existing) updateCashup(existing.id, form);
-    else addCashup(form);
+    // When the second shift is hidden (NetAcc by default) we exclude OPT data
+    // from the saved record by replacing it with a blank shift and zero shift #.
+    const toSave = showSecondShift
+      ? form
+      : { ...form, optShiftNumber: 0, opt: blankOptShift(optTerminalNames) };
+    if (existing) updateCashup(existing.id, toSave);
+    else addCashup(toSave);
     const now = format(new Date(), "dd MMM yyyy, HH:mm:ss");
     setSavedAt((prev) => prev ?? now);
     toast({ title: "Cashup saved", description: `Saved for ${format(new Date(selectedDate), "dd MMM yyyy")}` });
@@ -465,8 +491,8 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     if (!form.enteredBy.trim()) missing.push("Entered By");
     if (!form.cashierName.trim()) missing.push("Cashier");
     if (!form.shopShiftNumber) missing.push("Shop Shift #");
-    if (!form.optShiftNumber) missing.push("OPT Shift #");
-    if (!form.shop.income && !form.opt.income) missing.push("Income (Gross Sales) — at least one shift required");
+    if (showSecondShift && !form.optShiftNumber) missing.push("OPT Shift #");
+    if (!form.shop.income && (!showSecondShift || !form.opt.income)) missing.push("Income (Gross Sales) — at least one shift required");
 
     if (missing.length > 0) {
       toast({
@@ -505,7 +531,9 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
     // --- Speedpoints: batch# mandatory if amount entered ---
     const shopSpBad = form.shop.speedpoints.filter((s) => s.shopAmount !== 0 && !s.batchNo.trim());
-    const optSpBad = form.opt.speedpoints.filter((s) => s.optAmount !== 0 && !s.batchNo.trim());
+    const optSpBad = showSecondShift
+      ? form.opt.speedpoints.filter((s) => s.optAmount !== 0 && !s.batchNo.trim())
+      : [];
     const allSpBad = [...shopSpBad.map((s) => `Shop — ${s.terminal}`), ...optSpBad.map((s) => `OPT — ${s.terminal}`)];
     if (allSpBad.length > 0) {
       toast({
@@ -560,7 +588,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
     // --- Over (negative balance) confirmation ---
     const shopOver = shopDifference < -0.01;
-    const optOver = optDifference < -0.01;
+    const optOver = showSecondShift && optDifference < -0.01;
     if (shopOver || optOver) {
       setOverConfirmOpen(true);
       return;
@@ -727,19 +755,58 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
             className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
           />
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground">OPT Shift #</label>
-          <input
-            type="number"
-            value={form.optShiftNumber || ""}
-            onChange={(e) => setForm((f) => ({ ...f, optShiftNumber: parseInt(e.target.value) || 0 }))}
-            className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
-          />
-        </div>
+        {showSecondShift && (
+          <div>
+            <label className="text-xs text-muted-foreground">OPT Shift #</label>
+            <input
+              type="number"
+              value={form.optShiftNumber || ""}
+              onChange={(e) => setForm((f) => ({ ...f, optShiftNumber: parseInt(e.target.value) || 0 }))}
+              className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
+            />
+          </div>
+        )}
         <div className="flex items-end">
           <span className="text-xs text-muted-foreground italic">Use the Save button below ↓</span>
         </div>
       </div>
+
+      {/* Shift tabs (NetAcc) — Branch sites always show both shifts side-by-side */}
+      {isNetAccSite && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm rounded-md border transition ${
+              !showSecondShift
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card hover:bg-muted'
+            }`}
+            onClick={() => setShowSecondShift(false)}
+          >
+            🛒 Shift 1 only
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm rounded-md border transition ${
+              showSecondShift
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card hover:bg-muted'
+            }`}
+            onClick={() => setShowSecondShift(true)}
+          >
+            {showSecondShift ? '⛽ Shift 2 (second shift)' : '+ Add second shift'}
+          </button>
+          {!showSecondShift && (
+            <span className="text-xs text-muted-foreground italic">
+              Second shift is hidden — OPT data will not be saved.
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Wrapper: hides the OPT (right) column of every shop+opt grid below
+          when the second shift is not in use. */}
+      <div className={!showSecondShift ? 'cashier-no-opt space-y-3' : 'space-y-3'}>
 
       {/* Shift headers */}
       <div className="grid grid-cols-2 gap-0 rounded-lg overflow-hidden border">
@@ -1263,14 +1330,22 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
             <ShortOverBadge diff={optDifference} />
           </div>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t bg-secondary">
-          <span className="text-sm font-bold">COMBINED SHORT / (OVER)</span>
-          <ShortOverBadge diff={shopDifference + optDifference} />
-        </div>
+        {showSecondShift && (
+          <div className="px-4 py-3 flex items-center justify-between border-t bg-secondary">
+            <span className="text-sm font-bold">COMBINED SHORT / (OVER)</span>
+            <ShortOverBadge diff={shopDifference + optDifference} />
+          </div>
+        )}
         <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-t">
-          Shop: Total Takings − MOP Cash − Speedpoints − Accounts − Other &nbsp;|&nbsp; OPT: Net Sales − Speedpoints
+          Shop: Total Takings − MOP Cash − Speedpoints − Accounts − Other
+          {showSecondShift && (
+            <> &nbsp;|&nbsp; OPT: Net Sales − Speedpoints</>
+          )}
         </div>
       </div>
+
+      </div>
+      {/* end .cashier-no-opt wrapper */}
 
       {/* ─── EXPLANATIONS / NOTES ─── */}
       <div className="border rounded-lg overflow-hidden">
