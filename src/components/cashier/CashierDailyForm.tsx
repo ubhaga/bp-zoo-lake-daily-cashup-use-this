@@ -111,6 +111,7 @@ function ColHeader({ left, right }: { left: string; right: string }) {
 export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const { getCashupByDate, addCashup, updateCashup } = useCashupStore();
   const { payoutSuppliers, accounts: ACCOUNTS, cashierNames: CASHIER_NAMES, speedpointTerminals } = useMasterDataStore();
+  const addCashierName = useMasterDataStore(s => s.addCashierName);
   const SUPPLIERS = payoutSuppliers;
   const existing = getCashupByDate(selectedDate);
   const isLocked = selectedDate < "2026-01-01";
