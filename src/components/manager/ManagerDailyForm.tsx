@@ -5,7 +5,7 @@ import { useMasterDataStore } from "@/store/masterDataStore";
 import type { ManagerDailyEntry, InvoiceLine } from "@/types/cashup";
 import { Section, DataRow, CurrencyInput, CurrencyDisplay } from "@/components/ui/CashupUI";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Save, AlertCircle, CheckCircle, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Save, AlertCircle, CheckCircle, Lock, ChevronLeft, ChevronRight, ArrowLeftRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format, subDays, addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,6 +105,8 @@ interface InvoiceTableProps {
   onAdd: () => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<InvoiceLine>) => void;
+  onMove: (id: string) => void;
+  moveLabel: string;
 }
 
 function InvoiceTable({
@@ -116,6 +118,8 @@ function InvoiceTable({
   onAdd,
   onRemove,
   onUpdate,
+  onMove,
+  moveLabel,
 }: InvoiceTableProps) {
   return (
     <>
@@ -127,7 +131,10 @@ function InvoiceTable({
         <span className="col-span-1 text-right">VAT</span>
         <span></span>
       </div>
-      {lines.map((l) => (
+      {lines.map((l) => {
+        const selectableSuppliers = l.supplier && !supplierList.includes(l.supplier) ? [l.supplier, ...supplierList] : supplierList;
+
+        return (
         <div key={l.id} className="px-2 py-1 border-b grid grid-cols-12 gap-1 items-center">
           <div className="col-span-3">
             {l.autoImported ? (
@@ -139,7 +146,7 @@ function InvoiceTable({
                 className="input-cell text-[#020508] bg-[#e4ebf2] w-full text-left text-xs py-0.5"
               >
                 <option value="">Select...</option>
-                {supplierList.map((s) => (
+                {selectableSuppliers.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
@@ -192,11 +199,17 @@ function InvoiceTable({
               <CurrencyInput value={l.vat} onChange={(v) => onUpdate(l.id, { vat: v })} className="w-full" />
             )}
           </div>
-          <button onClick={() => onRemove(l.id)} className="text-destructive p-0.5 flex justify-center">
-            <Trash2 className={`h-3.5 w-3.5 ${l.autoImported ? 'opacity-40' : ''}`} />
-          </button>
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={() => onMove(l.id)} className="text-primary p-0.5" title={moveLabel} aria-label={moveLabel}>
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => onRemove(l.id)} className="text-destructive p-0.5" title="Delete invoice" aria-label="Delete invoice">
+              <Trash2 className={`h-3.5 w-3.5 ${l.autoImported ? 'opacity-40' : ''}`} />
+            </button>
+          </div>
         </div>
-      ))}
+        );
+      })}
       <div className="px-3 py-1.5 flex justify-between items-center">
         <Button variant="outline" size="sm" onClick={onAdd} className="text-xs h-7">
           <Plus className="h-3 w-3 mr-1" />
