@@ -183,7 +183,9 @@ export function DayEndUpload({ filterMonth }: Props) {
             <FileText className="h-4 w-4" />
             Day End Reports — {format(new Date(year, month - 1), 'MMMM yyyy')}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Upload .rpt day end files for each day</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Upload {isNetAcc ? 'NetAcc PDF' : '.rpt'} day end {isNetAcc ? 'reports' : 'files'} for each day
+          </p>
         </div>
         <div className="divide-y max-h-[500px] overflow-y-auto">
           {dates.map(date => {
@@ -213,7 +215,7 @@ export function DayEndUpload({ filterMonth }: Props) {
                     </span>
                     <label className="cursor-pointer text-xs text-primary hover:underline">
                       Replace
-                      <input type="file" accept=".rpt,.txt" className="hidden" onChange={(e) => {
+                      <input type="file" accept={acceptAttr} className="hidden" onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) handleFileUpload(date, f);
                         e.target.value = '';
@@ -227,7 +229,7 @@ export function DayEndUpload({ filterMonth }: Props) {
                   <label className={`cursor-pointer flex items-center gap-1.5 text-xs text-primary hover:underline ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <Upload className="h-3.5 w-3.5" />
                     Upload
-                    <input type="file" accept=".rpt,.txt" className="hidden" onChange={(e) => {
+                    <input type="file" accept={acceptAttr} className="hidden" onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) handleFileUpload(date, f);
                       e.target.value = '';
