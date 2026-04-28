@@ -32,6 +32,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractDayEndPayouts } from "@/lib/dayEndPayouts";
 import { extractCashierDailyAutofill } from "@/lib/dayEndPayouts";
 import { extractDayEndDebtors } from "@/lib/dayEndDebtors";
+import {
+  isNetAccContent,
+  extractNetAccDebtors,
+  extractNetAccBpRewards,
+  extractNetAccSalesTotal,
+  extractNetAccSafeDepositsTotal,
+} from "@/lib/dayEndNetAcc";
 
 const DAY_END_PAYOUTS_CUTOFF = "2026-03-01";
 const DAY_END_PAYOUT_VENDOR = "Day End Payouts";
