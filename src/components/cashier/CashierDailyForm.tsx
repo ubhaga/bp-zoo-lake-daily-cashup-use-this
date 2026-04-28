@@ -471,8 +471,13 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const optDifference = optTotalTakings - optSpeedpointTotal - optAccountTotal;
 
   const commitSave = () => {
-    if (existing) updateCashup(existing.id, form);
-    else addCashup(form);
+    // When the second shift is hidden (NetAcc by default) we exclude OPT data
+    // from the saved record by replacing it with a blank shift and zero shift #.
+    const toSave = showSecondShift
+      ? form
+      : { ...form, optShiftNumber: 0, opt: blankOptShift(optTerminalNames) };
+    if (existing) updateCashup(existing.id, toSave);
+    else addCashup(toSave);
     const now = format(new Date(), "dd MMM yyyy, HH:mm:ss");
     setSavedAt((prev) => prev ?? now);
     toast({ title: "Cashup saved", description: `Saved for ${format(new Date(selectedDate), "dd MMM yyyy")}` });
