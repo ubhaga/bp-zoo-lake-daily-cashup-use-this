@@ -141,6 +141,25 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [overConfirmOpen, setOverConfirmOpen] = useState(false);
 
+  /** Whether the second (OPT-style) shift is shown.
+   *  Branch sites: always shown.
+   *  NetAcc sites: hidden by default; user opts in via the "Add second shift" tab.
+   *  If an existing record already has OPT data we keep it visible so users can edit. */
+  const hasExistingOptData =
+    !!existing &&
+    (existing.optShiftNumber > 0 ||
+      existing.opt.income !== 0 ||
+      existing.opt.speedpoints.some((s) => s.optAmount !== 0) ||
+      (existing.opt.accounts ?? []).some((a) => a.amount !== 0));
+  const [showSecondShift, setShowSecondShift] = useState<boolean>(
+    !isNetAccSite || hasExistingOptData,
+  );
+  // Re-evaluate default when navigating between dates / records
+  useEffect(() => {
+    setShowSecondShift(!isNetAccSite || hasExistingOptData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, existing?.id, isNetAccSite]);
+
   useEffect(() => {
     if (existing) {
       // Merge existing cashup with any newly-added terminals so they appear
