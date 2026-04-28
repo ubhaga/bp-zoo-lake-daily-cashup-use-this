@@ -806,7 +806,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
       {/* Wrapper: hides the OPT (right) column of every shop+opt grid below
           when the second shift is not in use. */}
-      <div className={!showSecondShift ? 'cashier-no-opt space-y-4' : 'space-y-4'}>
+      <div className={!showSecondShift ? 'cashier-no-opt space-y-3' : 'space-y-3'}>
 
       {/* Shift headers */}
       <div className="grid grid-cols-2 gap-0 rounded-lg overflow-hidden border">
