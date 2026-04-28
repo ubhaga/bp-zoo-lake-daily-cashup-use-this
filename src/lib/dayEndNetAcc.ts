@@ -5,12 +5,9 @@
  * extracted text is stored in `day_end_uploads.content` with a leading marker
  * line `<<NETACC SHIFT FILE>>` so consumers can tell the two formats apart.
  *
- * Sections we care about:
- *   1. Totalisors (Closing minus Open)         → Electric Meter Sales (per pump/nozzle)
- *   2. Account Transactions                    → Section 7 MOP Account (one row per invoice)
- *   3. bpRewards Settlements (Batch # + total) → Section 6 Speedpoints (Redeem terminal)
- *   4. Sales Summary  TOTAL                    → Section 1 Income (Shop Till)
- *   5. Manual Safe deposits TOTAL              → Cash Connect Total validation badge
+ * IMPORTANT: pdfjs-dist outputs multiple spaces between glyphs (positional
+ * spacing). All section headers and data lines must be matched with flexible
+ * whitespace. We normalise content with `normalize()` before searching.
  */
 
 export const NETACC_MARKER = '<<NETACC SHIFT FILE>>';
@@ -20,11 +17,17 @@ export function isNetAccContent(content: string | null | undefined): boolean {
   return content.startsWith(NETACC_MARKER) || /NetPOS Shift File/i.test(content.slice(0, 2000));
 }
 
-/** Extract the shift batch date from "Start : Sat-28-Feb-2026 22:00:10" or "End : Sun-01-Mar-2026 ...".
- * Returns yyyy-MM-dd of the End date (i.e. the trading day the shift closes on). */
+/** Collapse runs of whitespace (but keep newlines) so headers like
+ *  "Account   Transactions" become "Account Transactions". */
+function normalize(content: string): string {
+  return content
+    .split('\n')
+    .map((line) => line.replace(/[ \t\u00A0]+/g, ' ').trim())
+    .join('\n');
+}
+
 export function extractNetAccBatchDate(content: string): string | null {
   if (!content) return null;
-  // Prefer End: line — that's the day the shift was closed.
   const m = content.match(/End\s*:\s*[A-Za-z]{3}-(\d{2})-([A-Za-z]{3})-(\d{4})/);
   if (!m) return null;
   const [, dd, monStr, yyyy] = m;
@@ -43,8 +46,8 @@ function num(s: string): number {
 
 /* ---------- 1. Pump sales (Totalisors Closing minus Open) ---------- */
 export interface NetAccPumpRow {
-  pumpNo: string;        // "01" → "1"
-  gradeId: string;       // "1" or "2" (nozzle index in PDF)
+  pumpNo: string;
+  gradeId: string;
   gradeDescription: string;
   volumeSold: number;
   moneySold: number;
@@ -52,21 +55,19 @@ export interface NetAccPumpRow {
 
 export function extractNetAccPumpSales(content: string): NetAccPumpRow[] {
   if (!content) return [];
-  const idx = content.indexOf('Totalisors (Closing minus Open)');
+  const text = normalize(content);
+  const idx = text.search(/Totalisors\s*\(Closing\s*minus\s*Open\)/i);
   if (idx < 0) return [];
-  // Stop before the next section
-  const endIdx = content.indexOf('Recorded Pump Sales', idx);
-  const scope = content.slice(idx, endIdx > 0 ? endIdx : idx + 5000);
+  const endIdx = text.indexOf('Recorded Pump Sales', idx);
+  const scope = text.slice(idx, endIdx > 0 ? endIdx : idx + 5000);
   const rows: NetAccPumpRow[] = [];
-  // Match lines like:  01 1 1ULT ULP95 188.16 3782.12
-  const re = /^\s*(\d{1,2})\s+(\d{1,2})\s+([A-Z0-9][A-Z0-9 ]*?)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s*$/gm;
+  // "01 1 1ULT ULP95 188.16 3782.12"
+  const re = /^(\d{1,2})\s+(\d{1,2})\s+([A-Z0-9][A-Z0-9 ]*?)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})$/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(scope)) !== null) {
-    const pumpNo = String(parseInt(m[1], 10));
-    const gradeId = String(parseInt(m[2], 10));
     rows.push({
-      pumpNo,
-      gradeId,
+      pumpNo: String(parseInt(m[1], 10)),
+      gradeId: String(parseInt(m[2], 10)),
       gradeDescription: m[3].trim(),
       volumeSold: num(m[4]),
       moneySold: num(m[5]),
@@ -77,8 +78,8 @@ export function extractNetAccPumpSales(content: string): NetAccPumpRow[] {
 
 /* ---------- 2. Account Transactions → MOP Account (Debtors) ---------- */
 export interface NetAccDebtorRow {
-  accountName: string;   // Title-cased Account Holder
-  invoice: string;       // Invoice number (acts as identifier)
+  accountName: string;
+  invoice: string;
   amount: number;
 }
 
@@ -88,23 +89,25 @@ function toTitleCase(raw: string): string {
 
 export function extractNetAccDebtors(content: string): NetAccDebtorRow[] {
   if (!content) return [];
-  const idx = content.indexOf('Account Transactions');
+  const text = normalize(content);
+  const idx = text.search(/Account Transactions/i);
   if (idx < 0) return [];
-  const endIdx = content.indexOf('Bank Settlements', idx);
-  const scope = content.slice(idx, endIdx > 0 ? endIdx : idx + 20000);
+  // Section ends at ACCOUNT GRAND TOTAL or Bank Settlements
+  const endRe = /ACCOUNT GRAND TOTAL|Bank Settlements/i;
+  const tail = text.slice(idx);
+  const endMatch = tail.search(endRe);
+  const scope = endMatch > 0 ? tail.slice(0, endMatch) : tail.slice(0, 20000);
 
   const rows: NetAccDebtorRow[] = [];
-  // Account Holder block pattern. Multiple invoices may follow per holder.
   const holderRe = /Account Holder:\s*([^\n]+)/g;
-  let hMatch: RegExpExecArray | null;
   const holders: { name: string; start: number }[] = [];
+  let hMatch: RegExpExecArray | null;
   while ((hMatch = holderRe.exec(scope)) !== null) {
     holders.push({ name: hMatch[1].trim(), start: hMatch.index });
   }
   holders.forEach((h, i) => {
     const blockEnd = i + 1 < holders.length ? holders[i + 1].start : scope.length;
     const block = scope.slice(h.start, blockEnd);
-    // Each invoice line: "Invoice: 389720    Amount: 523.44"
     const invRe = /Invoice:\s*(\d+)\s+Amount:\s*([-\d,]+\.\d{2})/g;
     let im: RegExpExecArray | null;
     while ((im = invRe.exec(block)) !== null) {
@@ -128,15 +131,19 @@ export interface NetAccBpRewards {
 
 export function extractNetAccBpRewards(content: string): NetAccBpRewards | null {
   if (!content) return null;
-  const idx = content.indexOf('bpRewards Settlements');
+  const text = normalize(content);
+  const idx = text.search(/bpRewards Settlements/i);
   if (idx < 0) return null;
-  const scope = content.slice(idx, idx + 2500);
-  // First Batch # in the section
+  // Stop at next major section
+  const tail = text.slice(idx);
+  const endIdx = tail.search(/EFT Summary|Switch Analysis/i);
+  const scope = endIdx > 0 ? tail.slice(0, endIdx) : tail.slice(0, 3000);
   const batchMatch = scope.match(/Batch\s*#\s*(\d+)/);
-  // Final TOTAL line of section
-  const totalMatch = scope.match(/^\s*TOTAL\s+([\d,]+\.\d{2})/m);
-  if (!totalMatch) return null;
-  const amount = num(totalMatch[1]);
+  // Final TOTAL line (not BATCH SUB TOTAL — the last TOTAL)
+  const totalMatches = [...scope.matchAll(/^TOTAL\s+([\d,]+\.\d{2})$/gm)];
+  if (totalMatches.length === 0) return null;
+  const last = totalMatches[totalMatches.length - 1];
+  const amount = num(last[1]);
   if (amount === 0) return null;
   return {
     batch: batchMatch ? batchMatch[1] : '',
@@ -144,14 +151,29 @@ export function extractNetAccBpRewards(content: string): NetAccBpRewards | null 
   };
 }
 
-/* ---------- 4. Sales Summary TOTAL → Income (Shop Till) ---------- */
+/* ---------- 4. Sales Summary TOTAL → Income (Shop Till) ----------
+ * The PDF contains TWO "Sales Summary" headers:
+ *  - "Fuel MOP Sales Summary"  (skip)
+ *  - "Sales Summary" (followed by Wet Stock / Dry Stock / Other / TOTAL) ← what we want
+ */
 export function extractNetAccSalesTotal(content: string): number | null {
   if (!content) return null;
-  const idx = content.indexOf('Sales Summary');
+  const text = normalize(content);
+  // Match a Sales Summary that is NOT preceded by "Fuel MOP " on the same line
+  const re = /(^|\n)(?!Fuel MOP )(?:[A-Za-z]+ )?Sales Summary\s*\n=+/g;
+  // Simpler: find a "Sales Summary" header followed by a line starting with "Wet Stock"
+  let idx = -1;
+  const allMatches = [...text.matchAll(/Sales Summary/g)];
+  for (const m of allMatches) {
+    const after = text.slice(m.index!, m.index! + 600);
+    if (/Wet Stock/i.test(after)) {
+      idx = m.index!;
+      break;
+    }
+  }
   if (idx < 0) return null;
-  const scope = content.slice(idx, idx + 1000);
-  // "TOTAL    76881.74"
-  const m = scope.match(/^\s*TOTAL\s+([\d,]+\.\d{2})/m);
+  const scope = text.slice(idx, idx + 600);
+  const m = scope.match(/^TOTAL\s+([\d,]+\.\d{2})$/m);
   if (!m) return null;
   return num(m[1]);
 }
@@ -159,14 +181,13 @@ export function extractNetAccSalesTotal(content: string): number | null {
 /* ---------- 5. Manual Safe Deposits TOTAL → Cash Connect badge ---------- */
 export function extractNetAccSafeDepositsTotal(content: string): number | null {
   if (!content) return null;
-  // The header text appears as "Manual Safe deposits" or "Manual Safe Deposits"
-  const idx = content.search(/Manual Safe [Dd]eposits/);
+  const text = normalize(content);
+  const idx = text.search(/Manual Safe [Dd]eposits/);
   if (idx < 0) return null;
-  const scope = content.slice(idx, idx + 3000);
-  // Stop at Attendant Analysis (next section)
-  const endIdx = scope.indexOf('Attendant Analysis');
-  const block = endIdx > 0 ? scope.slice(0, endIdx) : scope;
-  const m = block.match(/^\s*(?:\*\*)?TOTAL(?:\*\*)?\s+(?:\*\*)?([\d,]+\.\d{2})/m);
+  const tail = text.slice(idx);
+  const endIdx = tail.search(/Attendant Analysis|Account Transactions/i);
+  const block = endIdx > 0 ? tail.slice(0, endIdx) : tail.slice(0, 3000);
+  const m = block.match(/^TOTAL\s+([\d,]+\.\d{2})$/m);
   if (!m) return null;
   return num(m[1]);
 }
