@@ -155,6 +155,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
       data.forEach((r: { key: string; data: unknown }) => { map[r.key] = r.data; });
       set({
         siteName: (map.siteName as string) ?? get().siteName,
+        siteSystem: ((map.siteSystem as SiteSystem) ?? get().siteSystem),
         payoutSuppliers: (map.payoutSuppliers as string[]) ?? get().payoutSuppliers,
         eftSuppliers: (map.eftSuppliers as string[]) ?? get().eftSuppliers,
         accounts: (map.accounts as string[]) ?? get().accounts,
