@@ -42,6 +42,9 @@ export interface SpeedpointTerminal {
   bankPattern: string;
 }
 
+export type SiteSystem = 'Branch' | 'ESO' | 'NetAcc';
+export const SITE_SYSTEM_OPTIONS: SiteSystem[] = ['Branch', 'ESO', 'NetAcc'];
+
 const DEFAULT_SPEEDPOINT_TERMINALS: SpeedpointTerminal[] = [
   { name: 'Term 247608',       shift: 'both', bankPattern: '247608' },
   { name: 'Forecourt 929661',  shift: 'both', bankPattern: '929661' },
