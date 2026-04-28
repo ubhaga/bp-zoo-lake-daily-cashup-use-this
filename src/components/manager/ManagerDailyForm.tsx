@@ -859,6 +859,8 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
           onAdd={() => addInvoice("payout")}
           onRemove={(id) => removeInvoice(id, "payout")}
           onUpdate={(id, patch) => updateInvoice(id, patch, "payout")}
+          onMove={(id) => moveInvoice(id, "payout")}
+          moveLabel="Move invoice to EFT"
         />
       </Section>
 
@@ -873,6 +875,8 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
           onAdd={() => addInvoice("eft")}
           onRemove={(id) => removeInvoice(id, "eft")}
           onUpdate={(id, patch) => updateInvoice(id, patch, "eft")}
+          onMove={(id) => moveInvoice(id, "eft")}
+          moveLabel="Move invoice to Payout"
         />
       </Section>
 
