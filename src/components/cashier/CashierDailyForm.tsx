@@ -588,7 +588,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
     // --- Over (negative balance) confirmation ---
     const shopOver = shopDifference < -0.01;
-    const optOver = optDifference < -0.01;
+    const optOver = showSecondShift && optDifference < -0.01;
     if (shopOver || optOver) {
       setOverConfirmOpen(true);
       return;
