@@ -755,15 +755,17 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
             className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
           />
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground">OPT Shift #</label>
-          <input
-            type="number"
-            value={form.optShiftNumber || ""}
-            onChange={(e) => setForm((f) => ({ ...f, optShiftNumber: parseInt(e.target.value) || 0 }))}
-            className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
-          />
-        </div>
+        {showSecondShift && (
+          <div>
+            <label className="text-xs text-muted-foreground">OPT Shift #</label>
+            <input
+              type="number"
+              value={form.optShiftNumber || ""}
+              onChange={(e) => setForm((f) => ({ ...f, optShiftNumber: parseInt(e.target.value) || 0 }))}
+              className="input-cell text-[#020508] bg-[#e4ebf2] w-full mt-0.5"
+            />
+          </div>
+        )}
         <div className="flex items-end">
           <span className="text-xs text-muted-foreground italic">Use the Save button below ↓</span>
         </div>
