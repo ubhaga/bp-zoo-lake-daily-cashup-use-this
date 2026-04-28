@@ -1,3 +1,5 @@
+import { isNetAccContent, extractNetAccPayouts } from './dayEndNetAcc';
+
 /**
  * Extract the "Payouts" amount from the Daily Takings Summary section
  * of an uploaded day-end (.rpt) report.
@@ -13,6 +15,10 @@
  */
 export function extractDayEndPayouts(content: string): number | null {
   if (!content) return null;
+  // NetAcc PDFs (NetPOS Shift File) — delegate to NetAcc parser.
+  if (isNetAccContent(content)) {
+    return extractNetAccPayouts(content);
+  }
   // Restrict search to the "Daily Takings Summary" block to avoid false matches
   const idx = content.indexOf('Daily Takings Summary');
   const scope = idx >= 0 ? content.slice(idx, idx + 2000) : content;

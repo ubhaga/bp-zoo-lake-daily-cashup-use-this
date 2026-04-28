@@ -38,6 +38,8 @@ import {
   extractNetAccBpRewards,
   extractNetAccSalesTotal,
   extractNetAccSafeDepositsTotal,
+  extractNetAccShiftNumber,
+  extractNetAccCashierName,
 } from "@/lib/dayEndNetAcc";
 
 const DAY_END_PAYOUTS_CUTOFF = "2026-03-01";
@@ -109,6 +111,7 @@ function ColHeader({ left, right }: { left: string; right: string }) {
 export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const { getCashupByDate, addCashup, updateCashup } = useCashupStore();
   const { payoutSuppliers, accounts: ACCOUNTS, cashierNames: CASHIER_NAMES, speedpointTerminals } = useMasterDataStore();
+  const addCashierName = useMasterDataStore(s => s.addCashierName);
   const SUPPLIERS = payoutSuppliers;
   const existing = getCashupByDate(selectedDate);
   const isLocked = selectedDate < "2026-01-01";
@@ -282,9 +285,22 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         // NetAcc: single combined file populates Shop Till income only.
         // OPT shift is entered manually.
         const salesTotal = extractNetAccSalesTotal(data.content);
-        if (salesTotal == null) return;
-
         const bpRewards = extractNetAccBpRewards(data.content);
+        const shiftNo = extractNetAccShiftNumber(data.content);
+        const rawCashier = extractNetAccCashierName(data.content);
+
+        // Resolve cashier against master list; auto-add if new.
+        let resolvedCashier = "";
+        if (rawCashier) {
+          resolvedCashier = resolveCashierName(rawCashier, CASHIER_NAMES);
+          if (!resolvedCashier) {
+            const exists = CASHIER_NAMES.some(
+              (n) => n.toLowerCase() === rawCashier.toLowerCase()
+            );
+            if (!exists) addCashierName(rawCashier);
+            resolvedCashier = rawCashier;
+          }
+        }
 
         setForm((f) => {
           const shopSpeedpoints = f.shop.speedpoints.map((sp) => {
@@ -295,9 +311,11 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
           });
           return {
             ...f,
+            cashierName: resolvedCashier || f.cashierName,
+            shopShiftNumber: shiftNo ?? f.shopShiftNumber,
             shop: {
               ...f.shop,
-              income: salesTotal,
+              income: salesTotal ?? f.shop.income,
               returns: previousReturns,
               returns_mop: previousReturns > 0 ? -previousReturns : f.shop.returns_mop,
               speedpoints: shopSpeedpoints,
@@ -306,6 +324,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         });
         return;
       }
+
 
       // Branch (.rpt) flow — original autofill
       const autofill = extractCashierDailyAutofill(data.content);
@@ -331,7 +350,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, CASHIER_NAMES, getCashupByDate]);
+  }, [selectedDate, CASHIER_NAMES, getCashupByDate, addCashierName]);
 
   useEffect(() => {
     let cancelled = false;
