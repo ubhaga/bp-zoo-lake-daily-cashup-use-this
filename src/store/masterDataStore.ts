@@ -42,6 +42,9 @@ export interface SpeedpointTerminal {
   bankPattern: string;
 }
 
+export type SiteSystem = 'Branch' | 'ESO' | 'NetAcc';
+export const SITE_SYSTEM_OPTIONS: SiteSystem[] = ['Branch', 'ESO', 'NetAcc'];
+
 const DEFAULT_SPEEDPOINT_TERMINALS: SpeedpointTerminal[] = [
   { name: 'Term 247608',       shift: 'both', bankPattern: '247608' },
   { name: 'Forecourt 929661',  shift: 'both', bankPattern: '929661' },
@@ -58,6 +61,7 @@ export function getTankColor(tanks: TankDescription[], gradeIdOrDesc: string): s
 
 interface MasterDataStore {
   siteName: string;
+  siteSystem: SiteSystem;
   payoutSuppliers: string[];
   eftSuppliers: string[];
   accounts: string[];
@@ -77,6 +81,7 @@ interface MasterDataStore {
   loadAll: () => Promise<void>;
 
   setSiteName: (name: string) => void;
+  setSiteSystem: (system: SiteSystem) => void;
 
   addPayoutSupplier: (name: string) => void;
   updatePayoutSupplier: (old: string, next: string) => void;
@@ -129,6 +134,7 @@ async function persistKey(key: string, data: unknown) {
 
 export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   siteName: 'Shell Craighall',
+  siteSystem: 'Branch' as SiteSystem,
   payoutSuppliers: [...SUPPLIERS].sort(),
   eftSuppliers: DEFAULT_EFT_SUPPLIERS,
   accounts: [...DEFAULT_ACCOUNTS],
@@ -149,6 +155,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
       data.forEach((r: { key: string; data: unknown }) => { map[r.key] = r.data; });
       set({
         siteName: (map.siteName as string) ?? get().siteName,
+        siteSystem: ((map.siteSystem as SiteSystem) ?? get().siteSystem),
         payoutSuppliers: (map.payoutSuppliers as string[]) ?? get().payoutSuppliers,
         eftSuppliers: (map.eftSuppliers as string[]) ?? get().eftSuppliers,
         accounts: (map.accounts as string[]) ?? get().accounts,
@@ -191,6 +198,11 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
     const trimmed = name.trim() || 'Site';
     set({ siteName: trimmed });
     persistKey('siteName', trimmed);
+  },
+
+  setSiteSystem: (system) => {
+    set({ siteSystem: system });
+    persistKey('siteSystem', system);
   },
 
   addPayoutSupplier: (name) => {

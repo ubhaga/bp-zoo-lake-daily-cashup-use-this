@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useMasterDataStore, type TankDescription } from '@/store/masterDataStore';
+import { useMasterDataStore, type TankDescription, SITE_SYSTEM_OPTIONS, type SiteSystem } from '@/store/masterDataStore';
 import { toast } from '@/hooks/use-toast';
 import { SpeedpointTerminalsSettings } from './SpeedpointTerminalsSettings';
 import { PumpLayoutSettings } from './PumpLayoutSettings';
@@ -314,30 +314,67 @@ export function MasterDataSettings() {
         </p>
       </div>
 
-      {/* Site Name */}
+      {/* Site Name + Site System */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
           Site Name
         </h3>
-        <div className="border rounded-lg overflow-hidden max-w-2xl">
-          <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
-            Site / Branch Name
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
+              Site / Branch Name
+            </div>
+            <div className="p-3 bg-muted/20 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Used in the page header, browser tab title, and anywhere the site is referenced.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  value={siteNameDraft}
+                  onChange={e => setSiteNameDraft(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveSiteName()}
+                  placeholder="e.g. Shell Craighall"
+                  className="flex-1 text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <Button size="sm" onClick={saveSiteName} className="shrink-0" disabled={siteNameDraft.trim() === store.siteName}>
+                  <Check className="h-3.5 w-3.5 mr-1" /> Save
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="p-3 bg-muted/20 space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Used in the page header, browser tab title, and anywhere the site is referenced.
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={siteNameDraft}
-                onChange={e => setSiteNameDraft(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveSiteName()}
-                placeholder="e.g. Shell Craighall"
-                className="flex-1 text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Button size="sm" onClick={saveSiteName} className="shrink-0" disabled={siteNameDraft.trim() === store.siteName}>
-                <Check className="h-3.5 w-3.5 mr-1" /> Save
-              </Button>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
+              Site System
+            </div>
+            <div className="p-3 bg-muted/20 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Choose which system this site runs on. Controls which tabs/features are available.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {SITE_SYSTEM_OPTIONS.map(opt => {
+                  const active = store.siteSystem === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        if (store.siteSystem === opt) return;
+                        store.setSiteSystem(opt as SiteSystem);
+                        toast({ title: 'Site system updated', description: `Now set to "${opt}".` });
+                      }}
+                      className={
+                        'px-4 py-1.5 text-sm rounded-md border transition-colors ' +
+                        (active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-muted')
+                      }
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
