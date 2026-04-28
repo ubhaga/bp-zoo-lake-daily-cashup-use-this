@@ -771,6 +771,43 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         </div>
       </div>
 
+      {/* Shift tabs (NetAcc) — Branch sites always show both shifts side-by-side */}
+      {isNetAccSite && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm rounded-md border transition ${
+              !showSecondShift
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card hover:bg-muted'
+            }`}
+            onClick={() => setShowSecondShift(false)}
+          >
+            🛒 Shift 1 only
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm rounded-md border transition ${
+              showSecondShift
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card hover:bg-muted'
+            }`}
+            onClick={() => setShowSecondShift(true)}
+          >
+            {showSecondShift ? '⛽ Shift 2 (second shift)' : '+ Add second shift'}
+          </button>
+          {!showSecondShift && (
+            <span className="text-xs text-muted-foreground italic">
+              Second shift is hidden — OPT data will not be saved.
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Wrapper: hides the OPT (right) column of every shop+opt grid below
+          when the second shift is not in use. */}
+      <div className={!showSecondShift ? 'cashier-no-opt space-y-4' : 'space-y-4'}>
+
       {/* Shift headers */}
       <div className="grid grid-cols-2 gap-0 rounded-lg overflow-hidden border">
         <div className="bg-primary text-primary-foreground px-4 py-2 font-bold text-sm text-center">
