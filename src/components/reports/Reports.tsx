@@ -376,6 +376,39 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
   );
   const [selectedTerminal, setSelectedTerminal] = useState<string>('all');
   const [hideEmptyTerminals, setHideEmptyTerminals] = useState(true);
+
+  // Floating draggable Unmatched panel position (persisted to localStorage)
+  const [unmatchedPanelPos, setUnmatchedPanelPos] = useState<{ top: number; left: number }>(() => {
+    try {
+      const saved = localStorage.getItem('unmatched_panel_pos');
+      if (saved) return JSON.parse(saved);
+    } catch { /* noop */ }
+    const left = typeof window !== 'undefined' ? Math.max(window.innerWidth - 340, 16) : 16;
+    return { top: 120, left };
+  });
+  const unmatchedDragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
+  const handleUnmatchedDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startLeft = unmatchedPanelPos.left;
+    const startTop = unmatchedPanelPos.top;
+    unmatchedDragRef.current = { offsetX: e.clientX - startLeft, offsetY: e.clientY - startTop };
+    const onMove = (ev: MouseEvent) => {
+      if (!unmatchedDragRef.current) return;
+      const top = Math.max(0, Math.min(window.innerHeight - 80, ev.clientY - unmatchedDragRef.current.offsetY));
+      const left = Math.max(0, Math.min(window.innerWidth - 100, ev.clientX - unmatchedDragRef.current.offsetX));
+      setUnmatchedPanelPos({ top, left });
+    };
+    const onUp = () => {
+      unmatchedDragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+  useEffect(() => {
+    try { localStorage.setItem('unmatched_panel_pos', JSON.stringify(unmatchedPanelPos)); } catch { /* noop */ }
+  }, [unmatchedPanelPos]);
   type SpDateRow = {
     date: string;
     terminals: Record<string, { batchNo: string; shopAmount: number; optAmount: number; total: number }>;
@@ -1501,14 +1534,22 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
               </TooltipProvider>
             </div>
 
-            {/* Unmatched terminal lines — right side panel */}
+            {/* Unmatched terminal lines — floating, draggable panel */}
             {filteredUnmatchedTerminalLines.length > 0 && (
-              <div className="bg-card border rounded-lg overflow-x-clip w-80 flex-shrink-0 self-start sticky top-4">
-                <div className="px-3 py-2 border-b bg-destructive/10">
-                  <h3 className="font-semibold text-sm text-destructive">
+              <div
+                className="bg-card border rounded-lg shadow-lg overflow-x-clip w-80 fixed z-50"
+                style={{ top: unmatchedPanelPos.top, left: unmatchedPanelPos.left }}
+              >
+                <div
+                  onMouseDown={handleUnmatchedDragStart}
+                  className="px-3 py-2 border-b bg-destructive/10 cursor-move select-none"
+                  title="Drag to move"
+                >
+                  <h3 className="font-semibold text-sm text-destructive flex items-center gap-2">
+                    <span className="text-muted-foreground">⠿</span>
                     Unmatched ({filteredUnmatchedTerminalLines.length}{selectedTerminal !== 'all' ? ` · ${selectedTerminal}` : ''})
                   </h3>
-                  <p className="text-xs text-muted-foreground">Drag to match</p>
+                  <p className="text-xs text-muted-foreground">Drag header to move · Drag rows to match</p>
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
                   {filteredUnmatchedTerminalLines.map((l, i) => (
