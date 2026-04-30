@@ -1501,14 +1501,22 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
               </TooltipProvider>
             </div>
 
-            {/* Unmatched terminal lines — right side panel */}
+            {/* Unmatched terminal lines — floating, draggable panel */}
             {filteredUnmatchedTerminalLines.length > 0 && (
-              <div className="bg-card border rounded-lg overflow-x-clip w-80 flex-shrink-0 self-start sticky top-4">
-                <div className="px-3 py-2 border-b bg-destructive/10">
-                  <h3 className="font-semibold text-sm text-destructive">
+              <div
+                className="bg-card border rounded-lg shadow-lg overflow-x-clip w-80 fixed z-50"
+                style={{ top: unmatchedPanelPos.top, left: unmatchedPanelPos.left }}
+              >
+                <div
+                  onMouseDown={handleUnmatchedDragStart}
+                  className="px-3 py-2 border-b bg-destructive/10 cursor-move select-none"
+                  title="Drag to move"
+                >
+                  <h3 className="font-semibold text-sm text-destructive flex items-center gap-2">
+                    <span className="text-muted-foreground">⠿</span>
                     Unmatched ({filteredUnmatchedTerminalLines.length}{selectedTerminal !== 'all' ? ` · ${selectedTerminal}` : ''})
                   </h3>
-                  <p className="text-xs text-muted-foreground">Drag to match</p>
+                  <p className="text-xs text-muted-foreground">Drag header to move · Drag rows to match</p>
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
                   {filteredUnmatchedTerminalLines.map((l, i) => (
