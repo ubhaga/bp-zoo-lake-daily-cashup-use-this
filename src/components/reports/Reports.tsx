@@ -613,7 +613,7 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
     const termNum = TERMINAL_NUM_MAP[canonicalTerminal] || '';
-    const batchMatch = l.description.match(new RegExp(`${termNum}\\s+(\\d+)`));
+    const batchMatch = termNum ? l.description.match(new RegExp(`${termNum}\\s+(\\d+)`)) : null;
     const batch = batchMatch ? batchMatch[1] : '';
     prevBankParsed.push({ terminal: canonicalTerminal, batch, amount: l.amount, date: l.transaction_date, description: l.description, idx: idx + 100000, bankLineId: l.id });
   });
