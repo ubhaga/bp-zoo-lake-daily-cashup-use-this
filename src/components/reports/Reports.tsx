@@ -455,10 +455,57 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
     const termNum = TERMINAL_NUM_MAP[canonicalTerminal] || '';
-    const batchMatch = l.description.match(new RegExp(`${termNum}\\s+(\\d+)`));
+    const batchMatch = termNum ? l.description.match(new RegExp(`${termNum}\\s+(\\d+)`)) : null;
     const batch = batchMatch ? batchMatch[1] : '';
     bankParsed.push({ terminal: canonicalTerminal, batch, amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
   });
+
+  // ── BP Pay sum-matching ──
+  // BP Pay bank descriptions (e.g. "SB EFTPOS bpPAY 7632231") never carry a daily
+  // batch number. BP also settles 1 banking day later, and weekend/holiday sales are
+  // bundled into a single Monday deposit. So we sum-match: for each BP pay bank line
+  // (in date order) we look back across un-claimed prior cashup days (1..4 days)
+  // for the BP pay terminal and find the smallest contiguous group whose totals
+  // match the bank amount. We then synthesise a shared batch key on both sides so
+  // the existing terminal|batch matcher can do the rest.
+  const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
+  if (bpPayTerminal) {
+    const claimedDates = new Set<string>();
+    const bpBankLines = bankParsed
+      .filter(bp => bp.terminal === bpPayTerminal && !bp.batch)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    // Cashup days that have a non-zero BP pay total, sorted ascending
+    const bpCashupDays = speedpointByDate
+      .filter(r => (r.terminals[bpPayTerminal]?.total ?? 0) > 0.005)
+      .map(r => r.date)
+      .sort();
+    for (const bp of bpBankLines) {
+      // Candidate cashup days strictly before the bank date, not yet claimed,
+      // most recent first (we walk back from bank date)
+      const candidates = bpCashupDays.filter(d => d < bp.date && !claimedDates.has(d)).reverse();
+      let chosen: string[] | null = null;
+      // Try group sizes 1..4 (contiguous from most-recent backwards)
+      for (let size = 1; size <= 4 && size <= candidates.length; size++) {
+        const group = candidates.slice(0, size);
+        const sum = group.reduce((s, d) => {
+          const row = speedpointByDate.find(r => r.date === d);
+          return s + (row?.terminals[bpPayTerminal]?.total ?? 0);
+        }, 0);
+        if (Math.abs(sum - bp.amount) < 0.01) { chosen = group; break; }
+      }
+      if (!chosen) continue;
+      // Stamp synthetic batch on bank line and on each cashup-day row
+      const synthBatch = `BPP-${bp.bankLineId.slice(0, 8)}`;
+      bp.batch = synthBatch;
+      chosen.forEach(d => {
+        claimedDates.add(d);
+        const row = speedpointByDate.find(r => r.date === d);
+        const td = row?.terminals[bpPayTerminal];
+        if (td) td.batchNo = synthBatch;
+      });
+    }
+  }
+
 
   // Collect all manually matched bank line IDs first — these take precedence over auto-match
   const manuallyMatchedIds = new Set<string>();
