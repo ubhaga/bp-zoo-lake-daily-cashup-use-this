@@ -1174,7 +1174,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
       {/* ─── Less SECTION 8: OTHER ADJUSTMENTS (Shop only) ─── */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-primary text-primary-foreground px-3 py-2 font-semibold text-sm">
-          Less 8. Other Adjustments — Shop Till Only
+          Less 8. Other Adjustments — Shop Till Only (Negative for payin - Positive for owing)
         </div>
         {form.shop.otherAdjustments.map((o) => (
           <div key={o.id} className="flex items-center gap-2 px-3 py-1 border-b">
