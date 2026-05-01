@@ -70,6 +70,7 @@ export function getTankColor(tanks: TankDescription[], gradeIdOrDesc: string): s
 interface MasterDataStore {
   siteName: string;
   siteSystem: SiteSystem;
+  cashInTransit: CashInTransit;
   payoutSuppliers: string[];
   eftSuppliers: string[];
   accounts: string[];
