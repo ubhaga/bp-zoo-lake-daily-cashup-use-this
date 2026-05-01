@@ -71,6 +71,8 @@ interface MasterDataStore {
   siteName: string;
   siteSystem: SiteSystem;
   cashInTransit: CashInTransit;
+  /** Bank statement identifier per CIT provider (case-insensitive substring match against description). */
+  cashInTransitBankPatterns: Record<CashInTransit, string>;
   payoutSuppliers: string[];
   eftSuppliers: string[];
   accounts: string[];
