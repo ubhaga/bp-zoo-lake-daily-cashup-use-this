@@ -199,7 +199,7 @@ function DailyDashboard({ selectedDate }: Props) {
                 { label: 'Total VAT', v: invVat },
                 { label: 'Branch Day End', v: managerEntry.branchDayEndTotal },
                 { label: 'Coins Balance', v: managerEntry.coinsOpeningBalance + managerEntry.dailyCoins - managerEntry.ccBagClosureCoins },
-                { label: 'Cash Connect Balance', v: managerEntry.cashConnectOpeningBalance + managerEntry.cashDepositedCashConnect - managerEntry.ccBagClosureCashConnect },
+                { label: `${citLabel} Balance`, v: managerEntry.cashConnectOpeningBalance + managerEntry.cashDepositedCashConnect - managerEntry.ccBagClosureCashConnect },
                 { label: 'Banking', v: managerEntry.banking, bold: true },
               ].map(({ label, v, bold }) => (
                 <div key={label} className={`flex justify-between text-sm ${bold ? 'font-semibold border-t pt-1' : ''}`}>
