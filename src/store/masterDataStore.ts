@@ -167,6 +167,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
       set({
         siteName: (map.siteName as string) ?? get().siteName,
         siteSystem: ((map.siteSystem as SiteSystem) ?? get().siteSystem),
+        cashInTransit: ((map.cashInTransit as CashInTransit) ?? get().cashInTransit),
         payoutSuppliers: (map.payoutSuppliers as string[]) ?? get().payoutSuppliers,
         eftSuppliers: (map.eftSuppliers as string[]) ?? get().eftSuppliers,
         accounts: (map.accounts as string[]) ?? get().accounts,
