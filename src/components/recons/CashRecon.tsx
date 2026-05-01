@@ -26,6 +26,10 @@ const BANKING_OB_SEED = 60320.42; // outstanding from Feb
 
 export function CashRecon({ filterMonth }: CashReconProps) {
   const { cashups, managerEntries, getCashupByDate, getManagerEntryByDate } = useCashupStore();
+  const cashInTransit = useMasterDataStore(s => s.cashInTransit);
+  const isDeposita = cashInTransit === 'Deposita';
+  const citShortLbl = isDeposita ? 'Dep' : 'CC';
+  const citFullLbl = isDeposita ? 'Deposita' : 'Cash Connect';
 
   type BankLine = { id: string; amount: number; description: string; transaction_date: string };
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
