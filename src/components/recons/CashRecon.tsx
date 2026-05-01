@@ -344,14 +344,19 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                         ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.ccTransferIn} /></SourceLink>
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-right text-xs">
+                    <TableCell className="text-right text-xs bg-amber-50">
                       {row.ccBagClosure > 0
                         ? <SourceLink date={row.date} source="manager-daily" className="text-destructive"><CurrencyDisplay value={row.ccBagClosure} /></SourceLink>
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-right text-xs">
+                    <TableCell className="text-right text-xs bg-amber-50">
                       {row.easypayBagClosure > 0
                         ? <SourceLink date={row.date} source="manager-daily" className="text-destructive"><CurrencyDisplay value={row.easypayBagClosure} /></SourceLink>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-xs bg-amber-100 font-semibold">
+                      {(row.ccBagClosure + row.easypayBagClosure) > 0
+                        ? <CurrencyDisplay value={row.ccBagClosure + row.easypayBagClosure} />
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-right text-xs">
