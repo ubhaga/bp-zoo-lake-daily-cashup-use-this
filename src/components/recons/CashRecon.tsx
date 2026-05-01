@@ -433,13 +433,17 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableCell className="text-right text-xs font-bold bg-primary/10">
                   <CurrencyDisplay value={runningCC + runningEasypay} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs border-l">
-                  <CurrencyDisplay value={totalBankCharges} highlight />
-                </TableCell>
-                <TableCell className="text-right text-xs">
-                  <CurrencyDisplay value={totalBankingExpected} highlight />
-                </TableCell>
-                <TableCell className="text-right text-xs">
+                {!isDeposita && (
+                  <TableCell className="text-right text-xs border-l">
+                    <CurrencyDisplay value={totalBankCharges} highlight />
+                  </TableCell>
+                )}
+                {!isDeposita && (
+                  <TableCell className="text-right text-xs">
+                    <CurrencyDisplay value={totalBankingExpected} highlight />
+                  </TableCell>
+                )}
+                <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
                   <CurrencyDisplay value={totalBankActual} highlight />
                 </TableCell>
                 <TableCell className={`text-right text-xs font-bold ${
