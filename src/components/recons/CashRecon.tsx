@@ -279,21 +279,21 @@ export function CashRecon({ filterMonth }: CashReconProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[90px]">Date</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">CC Opening</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px]">{citShortLbl} Opening</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Easypay Opening</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold bg-muted/30">= Total Opening</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px] border-l">+ CC Daily</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] border-l">+ {citShortLbl} Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ EP Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Transfer In</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− CC Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px]">− {citShortLbl} Bag Closure</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− EP Bag Closure</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− Deep Frozen</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px] font-semibold">CC Closing</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] font-semibold">{citShortLbl} Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">EP Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[100px] font-semibold bg-primary/10">= Total Closing</TableHead>
-                <TableHead className="text-right text-xs border-l min-w-[80px]">Bank Charges</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">Expected Banking</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">Bank Stmt</TableHead>
+                {!isDeposita && <TableHead className="text-right text-xs border-l min-w-[80px]">Bank Charges</TableHead>}
+                {!isDeposita && <TableHead className="text-right text-xs min-w-[90px]">Expected Banking</TableHead>}
+                <TableHead className={`text-right text-xs min-w-[90px]${isDeposita ? ' border-l' : ''}`}>Bank Stmt</TableHead>
                 <TableHead className="text-right text-xs min-w-[100px]">Outstanding</TableHead>
               </TableRow>
             </TableHeader>
