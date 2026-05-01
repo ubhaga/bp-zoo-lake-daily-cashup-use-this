@@ -586,15 +586,52 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                       </TableCell>
                     )}
                     <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
-                      {row.bankActual > 0
-                        ? <CurrencyDisplay value={row.bankActual} />
-                        : <span className="text-muted-foreground">—</span>}
+                      {(() => {
+                        if (!isDeposita) {
+                          return row.bankActual > 0
+                            ? <CurrencyDisplay value={row.bankActual} />
+                            : <span className="text-muted-foreground">—</span>;
+                        }
+                        const auto = autoMatchByDate.get(row.date);
+                        const manual = manualByDate.get(row.date) ?? [];
+                        if (!auto && manual.length === 0) {
+                          return <span className="text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <div className="flex flex-col items-end gap-0.5">
+                            {auto && (
+                              <div className="flex items-center gap-1" title="Auto-matched">
+                                <span className="text-[10px] text-green-700">●</span>
+                                <CurrencyDisplay value={auto.amount} />
+                              </div>
+                            )}
+                            {manual.map(m => (
+                              <div key={m.id} className="flex items-center gap-1" title="Manually matched">
+                                <button
+                                  onClick={() => handleRemoveManualMatch(m.id)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Remove manual match"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <span className="text-[10px] text-blue-700">●</span>
+                                <CurrencyDisplay value={Number(m.amount)} />
+                              </div>
+                            ))}
+                            {(auto && manual.length > 0) || manual.length > 1 ? (
+                              <div className="border-t pt-0.5 font-semibold">
+                                <CurrencyDisplay value={row.bankActual} />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className={`text-right text-xs font-semibold ${
                       Math.abs(row.bankRunningBalance) < 0.01 ? 'bg-green-100 text-green-700' :
                       'bg-destructive/10 text-destructive'
                     }`}>
-                      {(row.bankingExpected > 0 || row.bankActual > 0 || Math.abs(row.bankRunningBalance) > 0.01)
+                      {(row.bankingExpected > 0 || row.bankActual > 0 || row.ccBagClosure > 0 || Math.abs(row.bankRunningBalance) > 0.01)
                         ? (Math.abs(row.bankRunningBalance) < 0.01
                           ? '✓'
                           : <CurrencyDisplay value={row.bankRunningBalance} />)
