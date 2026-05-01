@@ -83,12 +83,11 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     }
   });
 
-  // Compute banking opening balance.
-  //  - Cash Connect: seeded with Feb 2026 carry-in (BANKING_OB_SEED), then adds prior expected banking
-  //    (section 2.1) and subtracts prior CCONNECT bank deposits.
-  //  - Deposita: no section 2.1 / no expected banking, no Feb carry-in. Outstanding accumulates from
-  //    prior Dep Bag Closures only less prior Deposita bank deposits.
+  // Compute banking opening balance for Cash Connect only.
+  // Deposita outstanding is per-row only: Dep Bag Closure less same-date Bank Statement amount.
   const bankingOB = (() => {
+    if (isDeposita) return 0;
+
     const monthStartStr = format(monthStart, 'yyyy-MM-dd');
 
     // Subtract prior CIT bank deposits (matches active provider's bank pattern)
@@ -101,14 +100,6 @@ export function CashRecon({ filterMonth }: CashReconProps) {
         priorActual += line.amount;
       }
     });
-
-    if (isDeposita) {
-      // Sum all prior Dep Bag Closures from seed date forward; EP Bag Closure is not part of Deposita outstanding.
-      const priorDepBagClosure = managerEntries
-        .filter(e => e.date >= SEED_DATE && e.date < monthStartStr)
-        .reduce((s, e) => s + Math.abs(e.ccBagClosureCashConnect ?? 0), 0);
-      return priorDepBagClosure - priorActual;
-    }
 
     // Cash Connect: seed + prior expected banking − prior actual deposits
     let ob = filterMonth >= BANKING_OB_SEED_MONTH ? BANKING_OB_SEED : 0;
@@ -221,7 +212,10 @@ export function CashRecon({ filterMonth }: CashReconProps) {
 
     const bankActual = cconnectByDate.get(dateStr) ?? 0;
     const dailyDeposit = isDeposita ? ccBagClosure : bankingExpected;
-    bankRunning = bankRunning + dailyDeposit - bankActual;
+    const bankOutstanding = isDeposita ? dailyDeposit - bankActual : bankRunning + dailyDeposit - bankActual;
+    if (!isDeposita) {
+      bankRunning = bankOutstanding;
+    }
     const bankMatched = dailyDeposit > 0 && Math.abs(dailyDeposit - bankActual) < 0.01;
 
     dailyRows.push({
@@ -242,7 +236,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       bankingExpected,
       bankActual,
       bankMatched,
-      bankRunningBalance: bankRunning,
+      bankRunningBalance: bankOutstanding,
       coinsOpening,
       coinsDailyCashup,
       coinsBagClosure,
@@ -265,6 +259,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const totalBankCharges = dailyRows.reduce((s, r) => s + r.bankCharges, 0);
   const totalBankingExpected = dailyRows.reduce((s, r) => s + r.bankingExpected, 0);
   const totalBankActual = dailyRows.reduce((s, r) => s + r.bankActual, 0);
+  const totalBankOutstanding = isDeposita ? totalCCBagClosure - totalBankActual : bankRunning;
 
   const totalCoinsDailyCashup = dailyRows.reduce((s, r) => s + r.coinsDailyCashup, 0);
   const totalCoinsBagClosure = dailyRows.reduce((s, r) => s + r.coinsBagClosure, 0);
@@ -472,9 +467,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                   <CurrencyDisplay value={totalBankActual} highlight />
                 </TableCell>
                 <TableCell className={`text-right text-xs font-bold ${
-                  Math.abs(bankRunning) < 0.01 ? 'text-green-700' : 'text-destructive'
+                  Math.abs(totalBankOutstanding) < 0.01 ? 'text-green-700' : 'text-destructive'
                 }`}>
-                  <CurrencyDisplay value={bankRunning} />
+                  <CurrencyDisplay value={totalBankOutstanding} />
                 </TableCell>
               </TableRow>
             </TableBody>
