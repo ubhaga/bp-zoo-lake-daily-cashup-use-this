@@ -1018,7 +1018,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
             {/* CC Bag Closure */}
             <tr className="border-b">
               <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                CC Bag Closure BAG no. <span className="text-destructive font-bold">(-ve)</span>
+                {isDeposita ? 'Dep' : 'CC'} Bag Closure BAG no. <span className="text-destructive font-bold">(-ve)</span>
               </td>
               <td className="px-3 py-1.5 text-center text-xs text-muted-foreground align-middle">—</td>
               <td className="px-3 py-1.5">
