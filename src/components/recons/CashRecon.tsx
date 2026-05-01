@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
 import { useMasterDataStore } from '@/store/masterDataStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,11 +6,14 @@ import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { SourceLink } from '@/components/ui/SourceLink';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addDays } from 'date-fns';
 import type { ManagerDailyEntry } from '@/types/cashup';
 import { downloadCsv } from '@/lib/csvExport';
 import { parseBankStatementDate } from '@/lib/bankStatementDate';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface CashReconProps {
   filterMonth: string;
@@ -39,12 +42,19 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const [allocByLine, setAllocByLine] = useState<Map<string, string>>(new Map());
   const [priorAllocByLine, setPriorAllocByLine] = useState<Map<string, string>>(new Map());
 
+  // Manual matches between bank credits and Bag Closure rows (Deposita).
+  // Many-to-many: a single bank line can be split across multiple dates,
+  // a single date can receive multiple bank lines.
+  type ManualMatch = { id: string; bank_line_id: string; cashup_date: string; amount: number };
+  const [manualMatches, setManualMatches] = useState<ManualMatch[]>([]);
+
   const loadBankLines = useCallback(async () => {
-    const [cur, prior, curAlloc, priorAlloc] = await Promise.all([
+    const [cur, prior, curAlloc, priorAlloc, mm] = await Promise.all([
       supabase.from('bank_statement_lines').select('id, amount, description, transaction_date').eq('month', filterMonth),
       supabase.from('bank_statement_lines').select('id, amount, description, transaction_date').lt('month', filterMonth),
       supabase.from('bank_line_allocations').select('bank_line_id, recon_type').eq('month', filterMonth),
       supabase.from('bank_line_allocations').select('bank_line_id, recon_type').lt('month', filterMonth),
+      supabase.from('cash_recon_manual_matches').select('id, bank_line_id, cashup_date, amount').eq('month', filterMonth).eq('recon_kind', 'deposita'),
     ]);
     setBankLines((cur.data ?? []) as BankLine[]);
     setAllPriorBankLines((prior.data ?? []) as BankLine[]);
@@ -58,6 +68,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       pm.set(a.bank_line_id, a.recon_type),
     );
     setPriorAllocByLine(pm);
+    setManualMatches(((mm.data ?? []) as ManualMatch[]).map(r => ({ ...r, amount: Number(r.amount) })));
   }, [filterMonth]);
 
   useEffect(() => { loadBankLines(); }, [loadBankLines]);
@@ -69,19 +80,101 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   // Parse bank date from DD/MM/YYYY to YYYY-MM-DD
   const parseBankDate = (dateStr: string): string | null => parseBankStatementDate(dateStr);
 
-  // Find CCONNECT bank deposits by date
+  // ── Identify CIT bank credits for the month ──
+  // For Deposita: only POSITIVE amounts count as credits.
+  // For Cash Connect: keep historical behaviour (any sign matching pattern).
+  type CitLine = BankLine & { parsedDate: string | null };
+  const citLines: CitLine[] = bankLines
+    .map(line => {
+      const desc = line.description.toUpperCase().trim();
+      const reconType = allocByLine.get(line.id);
+      const isCit = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
+      if (!isCit) return null;
+      if (isDeposita && Number(line.amount) <= 0) return null;
+      return { ...line, parsedDate: parseBankDate(line.transaction_date) };
+    })
+    .filter((l): l is CitLine => l !== null);
+
+  // Map of manual matches by bank_line_id and by cashup_date
+  const manualByBankLine = useMemo(() => {
+    const m = new Map<string, ManualMatch[]>();
+    manualMatches.forEach(mm => {
+      if (!m.has(mm.bank_line_id)) m.set(mm.bank_line_id, []);
+      m.get(mm.bank_line_id)!.push(mm);
+    });
+    return m;
+  }, [manualMatches]);
+
+  const manualByDate = useMemo(() => {
+    const m = new Map<string, ManualMatch[]>();
+    manualMatches.forEach(mm => {
+      if (!m.has(mm.cashup_date)) m.set(mm.cashup_date, []);
+      m.get(mm.cashup_date)!.push(mm);
+    });
+    return m;
+  }, [manualMatches]);
+
+  // Auto-match: per credit, if (date matches a Bag Closure date AND amount equals
+  // its Bag Closure amount AND nothing manually matched there yet AND credit not
+  // already manually matched) → auto-pair. Stored as a virtual map keyed by date.
+  // Build per-date auto match by walking citLines.
+  const autoMatchByDate = new Map<string, { bankLineId: string; amount: number }>();
+  const autoMatchedBankIds = new Set<string>();
+
+  if (isDeposita) {
+    // Build per-date bag closure map
+    const bagClosureByDate = new Map<string, number>();
+    days.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const entry = getManagerEntryByDate(dateStr);
+      const closure = Math.abs(entry?.ccBagClosureCashConnect ?? 0);
+      if (closure > 0) bagClosureByDate.set(dateStr, closure);
+    });
+    citLines.forEach(line => {
+      if (!line.parsedDate) return;
+      // Skip if this line is manually matched anywhere
+      if (manualByBankLine.has(line.id)) return;
+      // Skip if the date already has a manual or auto match
+      if (manualByDate.has(line.parsedDate)) return;
+      if (autoMatchByDate.has(line.parsedDate)) return;
+      const closure = bagClosureByDate.get(line.parsedDate);
+      if (closure === undefined) return;
+      if (Math.abs(closure - Number(line.amount)) >= 0.01) return;
+      autoMatchByDate.set(line.parsedDate, { bankLineId: line.id, amount: Number(line.amount) });
+      autoMatchedBankIds.add(line.id);
+    });
+  }
+
+  // For Cash Connect mode, retain the legacy by-date sum behaviour.
   const cconnectByDate = new Map<string, number>();
-  bankLines.forEach(line => {
-    const desc = line.description.toUpperCase().trim();
-    const reconType = allocByLine.get(line.id);
-    const isCashCc = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
-    if (isCashCc) {
-      const dateStr = parseBankDate(line.transaction_date);
-      if (dateStr) {
-        cconnectByDate.set(dateStr, (cconnectByDate.get(dateStr) ?? 0) + line.amount);
+  if (!isDeposita) {
+    citLines.forEach(line => {
+      if (line.parsedDate) {
+        cconnectByDate.set(line.parsedDate, (cconnectByDate.get(line.parsedDate) ?? 0) + Number(line.amount));
       }
-    }
-  });
+    });
+  }
+
+  // Bank Stmt amount displayed per Deposita row = auto-match amount + sum of manual matches for that date
+  const bankStmtForDate = (dateStr: string): number => {
+    if (!isDeposita) return cconnectByDate.get(dateStr) ?? 0;
+    const auto = autoMatchByDate.get(dateStr)?.amount ?? 0;
+    const manual = (manualByDate.get(dateStr) ?? []).reduce((s, m) => s + Number(m.amount), 0);
+    return auto + manual;
+  };
+
+  // Unmatched bank credits (Deposita only) with remaining amount
+  const unmatchedCredits = useMemo(() => {
+    if (!isDeposita) return [];
+    return citLines
+      .filter(l => !autoMatchedBankIds.has(l.id))
+      .map(l => {
+        const used = (manualByBankLine.get(l.id) ?? []).reduce((s, m) => s + Number(m.amount), 0);
+        const remaining = Number(l.amount) - used;
+        return { ...l, used, remaining };
+      })
+      .filter(l => l.remaining > 0.005);
+  }, [citLines, autoMatchedBankIds, manualByBankLine, isDeposita]);
 
   // Compute banking opening balance for Cash Connect only.
   // Deposita outstanding is per-row only: Dep Bag Closure less same-date Bank Statement amount.
@@ -210,7 +303,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     const easypayClosing = easypayOpening + easypayDailyCashup - easypayBagClosure;
     const coinsClosing = coinsOpening + coinsDailyCashup - coinsBagClosure - transferFromCoins;
 
-    const bankActual = cconnectByDate.get(dateStr) ?? 0;
+    const bankActual = bankStmtForDate(dateStr);
     const dailyDeposit = isDeposita ? ccBagClosure : bankingExpected;
     const bankOutstanding = isDeposita ? dailyDeposit - bankActual : bankRunning + dailyDeposit - bankActual;
     if (!isDeposita) {
@@ -264,6 +357,95 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const totalCoinsDailyCashup = dailyRows.reduce((s, r) => s + r.coinsDailyCashup, 0);
   const totalCoinsBagClosure = dailyRows.reduce((s, r) => s + r.coinsBagClosure, 0);
   const totalCoinsTransferOut = dailyRows.reduce((s, r) => s + r.coinsTransferOut, 0);
+
+  // ── Manual match drag & drop (Deposita only) ──
+  type DragPayload = { bankLineId: string; remaining: number; description: string; amount: number; date: string };
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [splitDialog, setSplitDialog] = useState<{ payload: DragPayload; cashupDate: string; suggested: number } | null>(null);
+  const [splitInput, setSplitInput] = useState('');
+
+  const handleDragStart = (e: React.DragEvent, payload: DragPayload) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleRowDragOver = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDate(dateStr);
+  };
+  const handleRowDragLeave = () => setDragOverDate(null);
+
+  const persistManualMatch = async (bankLineId: string, cashupDate: string, amount: number) => {
+    const { data, error } = await supabase
+      .from('cash_recon_manual_matches')
+      .insert({ month: filterMonth, cashup_date: cashupDate, bank_line_id: bankLineId, amount, recon_kind: 'deposita' } as never)
+      .select('id, bank_line_id, cashup_date, amount')
+      .single();
+    if (error) { toast({ title: 'Match failed', description: error.message, variant: 'destructive' }); return; }
+    if (data) {
+      const row = data as ManualMatch;
+      setManualMatches(prev => [...prev, { ...row, amount: Number(row.amount) }]);
+    }
+  };
+
+  const handleRowDrop = async (e: React.DragEvent, cashupDate: string) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    try {
+      const payload: DragPayload = JSON.parse(e.dataTransfer.getData('application/json'));
+      const entry = getManagerEntryByDate(cashupDate);
+      const bagClosure = Math.abs(entry?.ccBagClosureCashConnect ?? 0);
+      const alreadyOnDate = (manualByDate.get(cashupDate) ?? []).reduce((s, m) => s + Number(m.amount), 0)
+        + (autoMatchByDate.get(cashupDate)?.amount ?? 0);
+      const remainingOnRow = Math.max(0, bagClosure - alreadyOnDate);
+      const suggested = remainingOnRow > 0 ? Math.min(payload.remaining, remainingOnRow) : payload.remaining;
+      if (Math.abs(payload.remaining - suggested) < 0.01 && remainingOnRow > 0) {
+        await persistManualMatch(payload.bankLineId, cashupDate, payload.remaining);
+        return;
+      }
+      setSplitInput(suggested.toFixed(2));
+      setSplitDialog({ payload, cashupDate, suggested });
+    } catch (err) { console.warn('Drop failed', err); }
+  };
+
+  const confirmSplit = async () => {
+    if (!splitDialog) return;
+    const amt = Number(splitInput);
+    if (!isFinite(amt) || amt <= 0) { toast({ title: 'Invalid amount', variant: 'destructive' }); return; }
+    if (amt > splitDialog.payload.remaining + 0.005) { toast({ title: 'Amount exceeds credit remaining', variant: 'destructive' }); return; }
+    await persistManualMatch(splitDialog.payload.bankLineId, splitDialog.cashupDate, amt);
+    setSplitDialog(null);
+    setSplitInput('');
+  };
+
+  const handleRemoveManualMatch = async (matchId: string) => {
+    const { error } = await supabase.from('cash_recon_manual_matches').delete().eq('id', matchId);
+    if (!error) setManualMatches(prev => prev.filter(m => m.id !== matchId));
+  };
+
+  const [unmatchedPanelPos, setUnmatchedPanelPos] = useState<{ top: number; left: number }>(() => {
+    try {
+      const saved = localStorage.getItem('cash_recon_unmatched_panel_pos');
+      if (saved) return JSON.parse(saved);
+    } catch { /* noop */ }
+    return { top: 120, left: typeof window !== 'undefined' ? window.innerWidth - 360 : 800 };
+  });
+  const panelDragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
+  const handlePanelDragStart = (e: React.MouseEvent) => {
+    panelDragRef.current = { offsetX: e.clientX - unmatchedPanelPos.left, offsetY: e.clientY - unmatchedPanelPos.top };
+    const onMove = (ev: MouseEvent) => {
+      if (!panelDragRef.current) return;
+      const top = Math.max(0, Math.min(window.innerHeight - 80, ev.clientY - panelDragRef.current.offsetY));
+      const left = Math.max(0, Math.min(window.innerWidth - 100, ev.clientX - panelDragRef.current.offsetX));
+      setUnmatchedPanelPos({ top, left });
+    };
+    const onUp = () => { panelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+  useEffect(() => {
+    try { localStorage.setItem('cash_recon_unmatched_panel_pos', JSON.stringify(unmatchedPanelPos)); } catch { /* noop */ }
+  }, [unmatchedPanelPos]);
 
   return (
     <div className="space-y-6">
@@ -327,7 +509,13 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 const hasData = row.ccDailyCashup > 0 || row.ccBagClosure > 0 || row.ccTransferIn > 0 || row.ccDeepFrozen > 0 || row.easypayDailyCashup > 0 || row.easypayBagClosure > 0;
 
                 return (
-                  <TableRow key={row.date} className={!hasData ? 'opacity-50' : ''}>
+                  <TableRow
+                    key={row.date}
+                    className={`${!hasData ? 'opacity-50' : ''} ${isDeposita && dragOverDate === row.date ? 'bg-primary/10 outline outline-2 outline-primary' : ''}`}
+                    onDragOver={isDeposita ? (e) => handleRowDragOver(e, row.date) : undefined}
+                    onDragLeave={isDeposita ? handleRowDragLeave : undefined}
+                    onDrop={isDeposita ? (e) => handleRowDrop(e, row.date) : undefined}
+                  >
                     <TableCell className="text-xs">
                       <SourceLink date={row.date} source="manager-daily">{format(new Date(row.date), 'dd MMM (EEE)')}</SourceLink>
                     </TableCell>
@@ -400,15 +588,52 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                       </TableCell>
                     )}
                     <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
-                      {row.bankActual > 0
-                        ? <CurrencyDisplay value={row.bankActual} />
-                        : <span className="text-muted-foreground">—</span>}
+                      {(() => {
+                        if (!isDeposita) {
+                          return row.bankActual > 0
+                            ? <CurrencyDisplay value={row.bankActual} />
+                            : <span className="text-muted-foreground">—</span>;
+                        }
+                        const auto = autoMatchByDate.get(row.date);
+                        const manual = manualByDate.get(row.date) ?? [];
+                        if (!auto && manual.length === 0) {
+                          return <span className="text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <div className="flex flex-col items-end gap-0.5">
+                            {auto && (
+                              <div className="flex items-center gap-1" title="Auto-matched">
+                                <span className="text-[10px] text-green-700">●</span>
+                                <CurrencyDisplay value={auto.amount} />
+                              </div>
+                            )}
+                            {manual.map(m => (
+                              <div key={m.id} className="flex items-center gap-1" title="Manually matched">
+                                <button
+                                  onClick={() => handleRemoveManualMatch(m.id)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Remove manual match"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <span className="text-[10px] text-blue-700">●</span>
+                                <CurrencyDisplay value={Number(m.amount)} />
+                              </div>
+                            ))}
+                            {(auto && manual.length > 0) || manual.length > 1 ? (
+                              <div className="border-t pt-0.5 font-semibold">
+                                <CurrencyDisplay value={row.bankActual} />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className={`text-right text-xs font-semibold ${
                       Math.abs(row.bankRunningBalance) < 0.01 ? 'bg-green-100 text-green-700' :
                       'bg-destructive/10 text-destructive'
                     }`}>
-                      {(row.bankingExpected > 0 || row.bankActual > 0 || Math.abs(row.bankRunningBalance) > 0.01)
+                      {(row.bankingExpected > 0 || row.bankActual > 0 || row.ccBagClosure > 0 || Math.abs(row.bankRunningBalance) > 0.01)
                         ? (Math.abs(row.bankRunningBalance) < 0.01
                           ? '✓'
                           : <CurrencyDisplay value={row.bankRunningBalance} />)
@@ -559,6 +784,85 @@ export function CashRecon({ filterMonth }: CashReconProps) {
           </Table>
         </div>
       </div>
+
+      {/* Floating Unmatched Bank Credits panel (Deposita) */}
+      {isDeposita && unmatchedCredits.length > 0 && (
+        <div
+          className="bg-card border rounded-lg shadow-lg overflow-x-clip w-80 fixed z-50"
+          style={{ top: unmatchedPanelPos.top, left: unmatchedPanelPos.left }}
+        >
+          <div
+            onMouseDown={handlePanelDragStart}
+            className="px-3 py-2 border-b bg-destructive/10 cursor-move select-none"
+            title="Drag to move"
+          >
+            <h3 className="font-semibold text-sm text-destructive flex items-center gap-2">
+              <span className="text-muted-foreground">⠿</span>
+              Unreconciled Bank Credits ({unmatchedCredits.length})
+            </h3>
+            <p className="text-xs text-muted-foreground">Drag header to move · Drag rows onto a Bag Closure date to match</p>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {unmatchedCredits.map(l => (
+              <div
+                key={l.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, { bankLineId: l.id, remaining: l.remaining, description: l.description, amount: Number(l.amount), date: l.transaction_date })}
+                className="cursor-grab active:cursor-grabbing hover:bg-muted/30 border-b last:border-b-0 px-3 py-2 text-xs flex flex-col gap-0.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-muted-foreground">{l.transaction_date}</span>
+                  <span className="font-semibold"><CurrencyDisplay value={l.remaining} /></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">⠿</span>
+                  <span className="truncate flex-1" title={l.description}>{l.description}</span>
+                </div>
+                {l.used > 0 && (
+                  <div className="text-[10px] text-muted-foreground">
+                    Original <CurrencyDisplay value={Number(l.amount)} /> · matched <CurrencyDisplay value={l.used} />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="px-3 py-2 bg-secondary font-semibold text-xs flex justify-between">
+              <span>Total Unreconciled</span>
+              <CurrencyDisplay value={unmatchedCredits.reduce((s, l) => s + l.remaining, 0)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split-amount dialog */}
+      <Dialog open={!!splitDialog} onOpenChange={(o) => { if (!o) { setSplitDialog(null); setSplitInput(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Match bank credit</DialogTitle>
+          </DialogHeader>
+          {splitDialog && (
+            <div className="space-y-3 text-sm">
+              <div>Bank credit <strong><CurrencyDisplay value={splitDialog.payload.amount} /></strong> from <strong>{splitDialog.payload.date}</strong></div>
+              <div className="text-xs text-muted-foreground truncate">{splitDialog.payload.description}</div>
+              <div>Remaining on credit: <CurrencyDisplay value={splitDialog.payload.remaining} /></div>
+              <div>Target row: <strong>{format(new Date(splitDialog.cashupDate), 'dd MMM yyyy')}</strong></div>
+              <div>
+                <label className="text-xs font-medium">Amount to match</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={splitInput}
+                  onChange={(e) => setSplitInput(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSplitDialog(null); setSplitInput(''); }}>Cancel</Button>
+            <Button onClick={confirmSplit}>Match</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

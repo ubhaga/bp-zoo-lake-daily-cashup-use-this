@@ -124,6 +124,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_recon_manual_matches: {
+        Row: {
+          amount: number
+          bank_line_id: string
+          cashup_date: string
+          created_at: string
+          id: string
+          month: string
+          recon_kind: string
+        }
+        Insert: {
+          amount?: number
+          bank_line_id: string
+          cashup_date: string
+          created_at?: string
+          id?: string
+          month: string
+          recon_kind?: string
+        }
+        Update: {
+          amount?: number
+          bank_line_id?: string
+          cashup_date?: string
+          created_at?: string
+          id?: string
+          month?: string
+          recon_kind?: string
+        }
+        Relationships: []
+      }
       commission_schedules: {
         Row: {
           commission_key: string
