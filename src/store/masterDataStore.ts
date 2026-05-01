@@ -45,6 +45,14 @@ export interface SpeedpointTerminal {
 export type SiteSystem = 'Branch' | 'ESO' | 'NetAcc';
 export const SITE_SYSTEM_OPTIONS: SiteSystem[] = ['Branch', 'ESO', 'NetAcc'];
 
+export type CashInTransit = 'Cash Connect' | 'Deposita';
+export const CASH_IN_TRANSIT_OPTIONS: CashInTransit[] = ['Cash Connect', 'Deposita'];
+
+/** Short label for the active CIT provider — "CC" for Cash Connect, "Dep" for Deposita. */
+export function citShort(cit: CashInTransit): string {
+  return cit === 'Deposita' ? 'Dep' : 'CC';
+}
+
 const DEFAULT_SPEEDPOINT_TERMINALS: SpeedpointTerminal[] = [
   { name: 'Term 247608',       shift: 'both', bankPattern: '247608' },
   { name: 'Forecourt 929661',  shift: 'both', bankPattern: '929661' },
