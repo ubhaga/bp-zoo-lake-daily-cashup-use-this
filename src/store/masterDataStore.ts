@@ -161,6 +161,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   loaded: false,
   payoutSupplierCategories: {},
   eftSupplierCategories: {},
+  cashInTransitBankPatterns: { 'Cash Connect': 'CCONNECT', 'Deposita': '' },
 
   loadAll: async () => {
     const { data } = await supabase.from('master_data').select('*');
