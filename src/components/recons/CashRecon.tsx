@@ -67,15 +67,12 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   // Parse bank date from DD/MM/YYYY to YYYY-MM-DD
   const parseBankDate = (dateStr: string): string | null => parseBankStatementDate(dateStr);
 
-  // CIT bank-statement keyword: CCONNECT for Cash Connect sites, CJSST for Deposita sites
-  const citKeyword = isDeposita ? 'CJSST' : 'CCONNECT';
-
-  // Find CIT bank deposits by date
+  // Find CCONNECT bank deposits by date
   const cconnectByDate = new Map<string, number>();
   bankLines.forEach(line => {
     const desc = line.description.toUpperCase().trim();
     const reconType = allocByLine.get(line.id);
-    const isCashCc = reconType === 'cash_cc' || (!reconType && desc.includes(citKeyword));
+    const isCashCc = reconType === 'cash_cc' || (!reconType && desc.includes('CCONNECT'));
     if (isCashCc) {
       const dateStr = parseBankDate(line.transaction_date);
       if (dateStr) {
@@ -94,12 +91,12 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       .filter(e => e.date >= BANKING_OB_SEED_MONTH + '-01' && e.date < monthStartStr)
       .reduce((s, e) => s + (e.banking ?? 0), 0);
     ob += priorExpected;
-    // Subtract all CIT bank deposits from prior months (seed month onwards)
+    // Subtract all CCONNECT bank deposits from prior months (seed month onwards)
     let priorActual = 0;
     allPriorBankLines.forEach(line => {
       const reconType = priorAllocByLine.get(line.id);
       const isCashCc =
-        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes(citKeyword));
+        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes('CCONNECT'));
       if (isCashCc) {
         priorActual += line.amount;
       }
