@@ -380,6 +380,29 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
     }
   };
 
+  const startEditDescription = (l: BankLine) => {
+    setEditingId(l.id);
+    setEditValue(l.description);
+  };
+
+  const saveEditDescription = async () => {
+    if (!editingId) return;
+    const id = editingId;
+    const newDesc = editValue.trim();
+    const original = lines.find(l => l.id === id);
+    setEditingId(null);
+    if (!original || newDesc === original.description) return;
+    if (!newDesc) { toast.error('Description cannot be empty'); return; }
+    const newTerminal = matchTerminal(newDesc);
+    const { error } = await supabase
+      .from('bank_statement_lines')
+      .update({ description: newDesc, matched_terminal: newTerminal } as never)
+      .eq('id', id);
+    if (error) { toast.error('Update failed: ' + error.message); return; }
+    setLines(prev => prev.map(l => l.id === id ? { ...l, description: newDesc, matched_terminal: newTerminal } : l));
+    toast.success('Description updated');
+  };
+
   return (
     <div className="bg-card border rounded-lg overflow-x-clip">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
