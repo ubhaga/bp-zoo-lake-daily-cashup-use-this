@@ -950,7 +950,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
               <th className="px-3 py-2 text-left font-semibold">DAILY CASH</th>
               <th className="px-3 py-2 text-center font-semibold">Coins</th>
               <th className="px-3 py-2 text-center font-semibold">Easy Pay</th>
-              <th className="px-3 py-2 text-center font-semibold">Cash Connect</th>
+              <th className="px-3 py-2 text-center font-semibold">{citLabel}</th>
               <th className="px-3 py-2 text-center font-semibold">TOTAL CC</th>
             </tr>
           </thead>
