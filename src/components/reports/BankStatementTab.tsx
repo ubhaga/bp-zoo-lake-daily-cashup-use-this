@@ -39,6 +39,8 @@ interface Props {
 export function BankStatementTab({ filterMonth, monthLabel }: Props) {
   const [lines, setLines] = useState<BankLine[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
   const { eftSuppliers, accounts, speedpointTerminals } = useMasterDataStore();
   const { allocations, upsert: upsertAllocation } = useBankAllocations(filterMonth);
   const managerEntries = useCashupStore((s) => s.managerEntries);
