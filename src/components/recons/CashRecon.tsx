@@ -40,12 +40,19 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const [allocByLine, setAllocByLine] = useState<Map<string, string>>(new Map());
   const [priorAllocByLine, setPriorAllocByLine] = useState<Map<string, string>>(new Map());
 
+  // Manual matches between bank credits and Bag Closure rows (Deposita).
+  // Many-to-many: a single bank line can be split across multiple dates,
+  // a single date can receive multiple bank lines.
+  type ManualMatch = { id: string; bank_line_id: string; cashup_date: string; amount: number };
+  const [manualMatches, setManualMatches] = useState<ManualMatch[]>([]);
+
   const loadBankLines = useCallback(async () => {
-    const [cur, prior, curAlloc, priorAlloc] = await Promise.all([
+    const [cur, prior, curAlloc, priorAlloc, mm] = await Promise.all([
       supabase.from('bank_statement_lines').select('id, amount, description, transaction_date').eq('month', filterMonth),
       supabase.from('bank_statement_lines').select('id, amount, description, transaction_date').lt('month', filterMonth),
       supabase.from('bank_line_allocations').select('bank_line_id, recon_type').eq('month', filterMonth),
       supabase.from('bank_line_allocations').select('bank_line_id, recon_type').lt('month', filterMonth),
+      supabase.from('cash_recon_manual_matches').select('id, bank_line_id, cashup_date, amount').eq('month', filterMonth).eq('recon_kind', 'deposita'),
     ]);
     setBankLines((cur.data ?? []) as BankLine[]);
     setAllPriorBankLines((prior.data ?? []) as BankLine[]);
@@ -59,6 +66,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       pm.set(a.bank_line_id, a.recon_type),
     );
     setPriorAllocByLine(pm);
+    setManualMatches(((mm.data ?? []) as ManualMatch[]).map(r => ({ ...r, amount: Number(r.amount) })));
   }, [filterMonth]);
 
   useEffect(() => { loadBankLines(); }, [loadBankLines]);
@@ -70,19 +78,101 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   // Parse bank date from DD/MM/YYYY to YYYY-MM-DD
   const parseBankDate = (dateStr: string): string | null => parseBankStatementDate(dateStr);
 
-  // Find CCONNECT bank deposits by date
+  // ── Identify CIT bank credits for the month ──
+  // For Deposita: only POSITIVE amounts count as credits.
+  // For Cash Connect: keep historical behaviour (any sign matching pattern).
+  type CitLine = BankLine & { parsedDate: string | null };
+  const citLines: CitLine[] = bankLines
+    .map(line => {
+      const desc = line.description.toUpperCase().trim();
+      const reconType = allocByLine.get(line.id);
+      const isCit = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
+      if (!isCit) return null;
+      if (isDeposita && Number(line.amount) <= 0) return null;
+      return { ...line, parsedDate: parseBankDate(line.transaction_date) };
+    })
+    .filter((l): l is CitLine => l !== null);
+
+  // Map of manual matches by bank_line_id and by cashup_date
+  const manualByBankLine = useMemo(() => {
+    const m = new Map<string, ManualMatch[]>();
+    manualMatches.forEach(mm => {
+      if (!m.has(mm.bank_line_id)) m.set(mm.bank_line_id, []);
+      m.get(mm.bank_line_id)!.push(mm);
+    });
+    return m;
+  }, [manualMatches]);
+
+  const manualByDate = useMemo(() => {
+    const m = new Map<string, ManualMatch[]>();
+    manualMatches.forEach(mm => {
+      if (!m.has(mm.cashup_date)) m.set(mm.cashup_date, []);
+      m.get(mm.cashup_date)!.push(mm);
+    });
+    return m;
+  }, [manualMatches]);
+
+  // Auto-match: per credit, if (date matches a Bag Closure date AND amount equals
+  // its Bag Closure amount AND nothing manually matched there yet AND credit not
+  // already manually matched) → auto-pair. Stored as a virtual map keyed by date.
+  // Build per-date auto match by walking citLines.
+  const autoMatchByDate = new Map<string, { bankLineId: string; amount: number }>();
+  const autoMatchedBankIds = new Set<string>();
+
+  if (isDeposita) {
+    // Build per-date bag closure map
+    const bagClosureByDate = new Map<string, number>();
+    days.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const entry = getManagerEntryByDate(dateStr);
+      const closure = Math.abs(entry?.ccBagClosureCashConnect ?? 0);
+      if (closure > 0) bagClosureByDate.set(dateStr, closure);
+    });
+    citLines.forEach(line => {
+      if (!line.parsedDate) return;
+      // Skip if this line is manually matched anywhere
+      if (manualByBankLine.has(line.id)) return;
+      // Skip if the date already has a manual or auto match
+      if (manualByDate.has(line.parsedDate)) return;
+      if (autoMatchByDate.has(line.parsedDate)) return;
+      const closure = bagClosureByDate.get(line.parsedDate);
+      if (closure === undefined) return;
+      if (Math.abs(closure - Number(line.amount)) >= 0.01) return;
+      autoMatchByDate.set(line.parsedDate, { bankLineId: line.id, amount: Number(line.amount) });
+      autoMatchedBankIds.add(line.id);
+    });
+  }
+
+  // For Cash Connect mode, retain the legacy by-date sum behaviour.
   const cconnectByDate = new Map<string, number>();
-  bankLines.forEach(line => {
-    const desc = line.description.toUpperCase().trim();
-    const reconType = allocByLine.get(line.id);
-    const isCashCc = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
-    if (isCashCc) {
-      const dateStr = parseBankDate(line.transaction_date);
-      if (dateStr) {
-        cconnectByDate.set(dateStr, (cconnectByDate.get(dateStr) ?? 0) + line.amount);
+  if (!isDeposita) {
+    citLines.forEach(line => {
+      if (line.parsedDate) {
+        cconnectByDate.set(line.parsedDate, (cconnectByDate.get(line.parsedDate) ?? 0) + Number(line.amount));
       }
-    }
-  });
+    });
+  }
+
+  // Bank Stmt amount displayed per Deposita row = auto-match amount + sum of manual matches for that date
+  const bankStmtForDate = (dateStr: string): number => {
+    if (!isDeposita) return cconnectByDate.get(dateStr) ?? 0;
+    const auto = autoMatchByDate.get(dateStr)?.amount ?? 0;
+    const manual = (manualByDate.get(dateStr) ?? []).reduce((s, m) => s + Number(m.amount), 0);
+    return auto + manual;
+  };
+
+  // Unmatched bank credits (Deposita only) with remaining amount
+  const unmatchedCredits = useMemo(() => {
+    if (!isDeposita) return [];
+    return citLines
+      .filter(l => !autoMatchedBankIds.has(l.id))
+      .map(l => {
+        const used = (manualByBankLine.get(l.id) ?? []).reduce((s, m) => s + Number(m.amount), 0);
+        const remaining = Number(l.amount) - used;
+        return { ...l, used, remaining };
+      })
+      .filter(l => l.remaining > 0.005);
+  }, [citLines, autoMatchedBankIds, manualByBankLine, isDeposita]);
 
   // Compute banking opening balance for Cash Connect only.
   // Deposita outstanding is per-row only: Dep Bag Closure less same-date Bank Statement amount.
