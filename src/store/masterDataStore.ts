@@ -226,6 +226,14 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
     persistKey('cashInTransit', cit);
   },
 
+  setCashInTransitBankPattern: (cit, pattern) => {
+    set(s => {
+      const next = { ...s.cashInTransitBankPatterns, [cit]: pattern };
+      persistKey('cashInTransitBankPatterns', next);
+      return { cashInTransitBankPatterns: next };
+    });
+  },
+
   addPayoutSupplier: (name) => {
     set(s => {
       const next = [...s.payoutSuppliers, name].sort();
