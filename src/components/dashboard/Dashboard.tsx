@@ -175,7 +175,7 @@ function DailyDashboard({ selectedDate }: Props) {
                 { label: 'Total Payouts', v: shopPayoutsTotal + (cashup.shop.lottoPayouts ?? 0) },
                 { label: 'Total Receipts', v: shopReceipts },
                 { label: 'Shop Total Takings', v: shopTakings, bold: true },
-                { label: 'Cash Connect', v: cashConnectTotal },
+                { label: citLabel, v: cashConnectTotal },
                 { label: 'Shop Speedpoints', v: shopSP },
                 { label: 'OPT Speedpoints', v: optSP },
                 { label: 'Total Speedpoints', v: shopSP + optSP, bold: true },
