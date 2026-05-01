@@ -303,7 +303,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
               {bankingOB !== 0 && (
                 <TableRow className="bg-muted/40 font-semibold">
                   <TableCell className="text-xs">Opening Balance</TableCell>
-                  <TableCell colSpan={12}></TableCell>
+                  <TableCell colSpan={13}></TableCell>
                   {!isDeposita && <TableCell className="border-l"></TableCell>}
                   {!isDeposita && <TableCell></TableCell>}
                   <TableCell className={isDeposita ? 'border-l' : ''}></TableCell>
