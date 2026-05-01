@@ -14,8 +14,6 @@ interface Props {
 export function Dashboard({ selectedDate, onNavigateToDate }: Props) {
   const [view, setView] = useState<'daily' | 'monthly'>('monthly');
   const { getCashupByDate, getManagerEntryByDate } = useCashupStore();
-  const cashInTransit = useMasterDataStore(s => s.cashInTransit);
-  const citLabel = cashInTransit === 'Deposita' ? 'Deposita' : 'Cash Connect';
 
   return (
     <div className="space-y-4">
