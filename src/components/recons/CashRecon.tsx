@@ -12,6 +12,8 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addDays 
 import type { ManagerDailyEntry } from '@/types/cashup';
 import { downloadCsv } from '@/lib/csvExport';
 import { parseBankStatementDate } from '@/lib/bankStatementDate';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface CashReconProps {
   filterMonth: string;
