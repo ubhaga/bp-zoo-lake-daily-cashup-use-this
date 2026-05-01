@@ -368,17 +368,21 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                       <CurrencyDisplay value={row.totalClosing} />
                     </TableCell>
                     {/* Bank matching */}
-                    <TableCell className="text-right text-xs border-l">
-                      {row.bankCharges > 0
-                        ? <SourceLink date={row.date} source="manager-daily" className="text-orange-600"><CurrencyDisplay value={row.bankCharges} /></SourceLink>
-                        : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-right text-xs">
-                      {row.bankingExpected > 0
-                        ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.bankingExpected} /></SourceLink>
-                        : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-right text-xs">
+                    {!isDeposita && (
+                      <TableCell className="text-right text-xs border-l">
+                        {row.bankCharges > 0
+                          ? <SourceLink date={row.date} source="manager-daily" className="text-orange-600"><CurrencyDisplay value={row.bankCharges} /></SourceLink>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
+                    {!isDeposita && (
+                      <TableCell className="text-right text-xs">
+                        {row.bankingExpected > 0
+                          ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.bankingExpected} /></SourceLink>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
+                    <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
                       {row.bankActual > 0
                         ? <CurrencyDisplay value={row.bankActual} />
                         : <span className="text-muted-foreground">—</span>}
