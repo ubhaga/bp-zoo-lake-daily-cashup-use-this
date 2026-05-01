@@ -319,7 +319,7 @@ export function MasterDataSettings() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
           Site Name
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-6xl">
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
               Site / Branch Name
