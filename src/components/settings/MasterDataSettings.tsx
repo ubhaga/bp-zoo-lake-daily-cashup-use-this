@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useMasterDataStore, type TankDescription, SITE_SYSTEM_OPTIONS, type SiteSystem } from '@/store/masterDataStore';
+import { useMasterDataStore, type TankDescription, SITE_SYSTEM_OPTIONS, type SiteSystem, CASH_IN_TRANSIT_OPTIONS, type CashInTransit } from '@/store/masterDataStore';
 import { toast } from '@/hooks/use-toast';
 import { SpeedpointTerminalsSettings } from './SpeedpointTerminalsSettings';
 import { PumpLayoutSettings } from './PumpLayoutSettings';
