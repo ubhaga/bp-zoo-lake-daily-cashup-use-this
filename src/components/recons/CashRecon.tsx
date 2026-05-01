@@ -94,12 +94,12 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       .filter(e => e.date >= BANKING_OB_SEED_MONTH + '-01' && e.date < monthStartStr)
       .reduce((s, e) => s + (e.banking ?? 0), 0);
     ob += priorExpected;
-    // Subtract all CCONNECT bank deposits from prior months (seed month onwards)
+    // Subtract all CIT bank deposits from prior months (seed month onwards)
     let priorActual = 0;
     allPriorBankLines.forEach(line => {
       const reconType = priorAllocByLine.get(line.id);
       const isCashCc =
-        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes('CCONNECT'));
+        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes(citKeyword));
       if (isCashCc) {
         priorActual += line.amount;
       }
