@@ -1031,7 +1031,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         </div>
         <div className="flex items-center justify-between px-3 py-1.5 bg-secondary font-semibold text-sm">
           <span className="flex items-center gap-2">
-            Cash Connect Total (Sum)
+            {citTotalLabel}
             {netAccSafeDepositsTotal != null && (
               <span
                 className={`text-xs font-normal px-2 py-0.5 rounded ${
