@@ -264,11 +264,11 @@ export function CashRecon({ filterMonth }: CashReconProps) {
           </h3>
           <Button size="sm" variant="outline" onClick={() => {
             const headers = isDeposita
-              ? ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Stmt', 'Outstanding']
-              : ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'];
+              ? ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', 'Bag Total', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Stmt', 'Outstanding']
+              : ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', 'Bag Total', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'];
             const rows = isDeposita
-              ? dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankActual, r.bankRunningBalance])
-              : dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]);
+              ? dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccBagClosure + r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankActual, r.bankRunningBalance])
+              : dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccBagClosure + r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]);
             downloadCsv(headers, rows, `${isDeposita ? 'deposita' : 'cash-connect'}-recon-${filterMonth}.csv`);
           }}>
             <Download className="h-3.5 w-3.5 mr-1" />Export CSV
