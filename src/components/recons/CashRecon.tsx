@@ -264,11 +264,11 @@ export function CashRecon({ filterMonth }: CashReconProps) {
           </h3>
           <Button size="sm" variant="outline" onClick={() => {
             const headers = isDeposita
-              ? ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Stmt', 'Outstanding']
-              : ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'];
+              ? ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', 'Bag Total', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Stmt', 'Outstanding']
+              : ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', 'Bag Total', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'];
             const rows = isDeposita
-              ? dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankActual, r.bankRunningBalance])
-              : dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]);
+              ? dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccBagClosure + r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankActual, r.bankRunningBalance])
+              : dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccBagClosure + r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]);
             downloadCsv(headers, rows, `${isDeposita ? 'deposita' : 'cash-connect'}-recon-${filterMonth}.csv`);
           }}>
             <Download className="h-3.5 w-3.5 mr-1" />Export CSV
@@ -285,8 +285,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableHead className="text-right text-xs min-w-[90px] border-l">+ {citShortLbl} Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ EP Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Transfer In</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− {citShortLbl} Bag Closure</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− EP Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-50">− {citShortLbl} Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-50">− EP Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-100 font-semibold">= Bag Total</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− Deep Frozen</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">{citShortLbl} Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">EP Closing</TableHead>
@@ -302,7 +303,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
               {bankingOB !== 0 && (
                 <TableRow className="bg-muted/40 font-semibold">
                   <TableCell className="text-xs">Opening Balance</TableCell>
-                  <TableCell colSpan={12}></TableCell>
+                  <TableCell colSpan={13}></TableCell>
                   {!isDeposita && <TableCell className="border-l"></TableCell>}
                   {!isDeposita && <TableCell></TableCell>}
                   <TableCell className={isDeposita ? 'border-l' : ''}></TableCell>
@@ -343,14 +344,19 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                         ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.ccTransferIn} /></SourceLink>
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-right text-xs">
+                    <TableCell className="text-right text-xs bg-amber-50">
                       {row.ccBagClosure > 0
                         ? <SourceLink date={row.date} source="manager-daily" className="text-destructive"><CurrencyDisplay value={row.ccBagClosure} /></SourceLink>
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-right text-xs">
+                    <TableCell className="text-right text-xs bg-amber-50">
                       {row.easypayBagClosure > 0
                         ? <SourceLink date={row.date} source="manager-daily" className="text-destructive"><CurrencyDisplay value={row.easypayBagClosure} /></SourceLink>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-xs bg-amber-100 font-semibold">
+                      {(row.ccBagClosure + row.easypayBagClosure) > 0
+                        ? <CurrencyDisplay value={row.ccBagClosure + row.easypayBagClosure} />
                         : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-right text-xs">
@@ -415,11 +421,14 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableCell className="text-right text-xs">
                   <CurrencyDisplay value={totalCCTransferIn} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs">
+                <TableCell className="text-right text-xs bg-amber-50">
                   <CurrencyDisplay value={totalCCBagClosure} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs">
+                <TableCell className="text-right text-xs bg-amber-50">
                   <CurrencyDisplay value={totalEasypayBagClosure} highlight />
+                </TableCell>
+                <TableCell className="text-right text-xs bg-amber-100 font-bold">
+                  <CurrencyDisplay value={totalCCBagClosure + totalEasypayBagClosure} highlight />
                 </TableCell>
                 <TableCell className="text-right text-xs">
                   <CurrencyDisplay value={totalCCDeepFrozen} highlight />
