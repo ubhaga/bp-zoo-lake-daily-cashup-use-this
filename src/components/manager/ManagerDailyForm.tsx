@@ -673,7 +673,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     const negativeClosingFields: string[] = [];
     if (coinsClosing < -0.005) negativeClosingFields.push("Coins");
     if (easypayClosing < -0.005) negativeClosingFields.push("Easy Pay");
-    if (ccClosing < -0.005) negativeClosingFields.push("Cash Connect");
+    if (ccClosing < -0.005) negativeClosingFields.push(citLabel);
     if (negativeClosingFields.length > 0) {
       toast({
         title: "Negative closing balance",
