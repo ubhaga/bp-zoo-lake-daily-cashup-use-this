@@ -74,7 +74,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   bankLines.forEach(line => {
     const desc = line.description.toUpperCase().trim();
     const reconType = allocByLine.get(line.id);
-    const isCashCc = reconType === 'cash_cc' || (!reconType && desc.includes('CCONNECT'));
+    const isCashCc = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
     if (isCashCc) {
       const dateStr = parseBankDate(line.transaction_date);
       if (dateStr) {
