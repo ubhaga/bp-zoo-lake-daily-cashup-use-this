@@ -259,6 +259,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const totalBankCharges = dailyRows.reduce((s, r) => s + r.bankCharges, 0);
   const totalBankingExpected = dailyRows.reduce((s, r) => s + r.bankingExpected, 0);
   const totalBankActual = dailyRows.reduce((s, r) => s + r.bankActual, 0);
+  const totalBankOutstanding = isDeposita ? totalCCBagClosure - totalBankActual : bankRunning;
 
   const totalCoinsDailyCashup = dailyRows.reduce((s, r) => s + r.coinsDailyCashup, 0);
   const totalCoinsBagClosure = dailyRows.reduce((s, r) => s + r.coinsBagClosure, 0);
@@ -466,9 +467,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                   <CurrencyDisplay value={totalBankActual} highlight />
                 </TableCell>
                 <TableCell className={`text-right text-xs font-bold ${
-                  Math.abs(bankRunning) < 0.01 ? 'text-green-700' : 'text-destructive'
+                  Math.abs(totalBankOutstanding) < 0.01 ? 'text-green-700' : 'text-destructive'
                 }`}>
-                  <CurrencyDisplay value={bankRunning} />
+                  <CurrencyDisplay value={totalBankOutstanding} />
                 </TableCell>
               </TableRow>
             </TableBody>
