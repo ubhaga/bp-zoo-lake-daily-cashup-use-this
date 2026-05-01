@@ -276,7 +276,10 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     categories: CATEGORIES,
     payoutSupplierCategories,
     eftSupplierCategories,
+    cashInTransit,
   } = useMasterDataStore();
+  const isDeposita = cashInTransit === 'Deposita';
+  const citLabel = isDeposita ? 'Deposita' : 'Cash Connect';
   const existing = getManagerEntryByDate(selectedDate);
   const cashup = getCashupByDate(selectedDate);
   const isLocked = selectedDate < "2026-01-01";
@@ -670,7 +673,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     const negativeClosingFields: string[] = [];
     if (coinsClosing < -0.005) negativeClosingFields.push("Coins");
     if (easypayClosing < -0.005) negativeClosingFields.push("Easy Pay");
-    if (ccClosing < -0.005) negativeClosingFields.push("Cash Connect");
+    if (ccClosing < -0.005) negativeClosingFields.push(citLabel);
     if (negativeClosingFields.length > 0) {
       toast({
         title: "Negative closing balance",
@@ -947,7 +950,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
               <th className="px-3 py-2 text-left font-semibold">DAILY CASH</th>
               <th className="px-3 py-2 text-center font-semibold">Coins</th>
               <th className="px-3 py-2 text-center font-semibold">Easy Pay</th>
-              <th className="px-3 py-2 text-center font-semibold">Cash Connect</th>
+              <th className="px-3 py-2 text-center font-semibold">{citLabel}</th>
               <th className="px-3 py-2 text-center font-semibold">TOTAL CC</th>
             </tr>
           </thead>
@@ -1015,7 +1018,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
             {/* CC Bag Closure */}
             <tr className="border-b">
               <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                CC Bag Closure BAG no. <span className="text-destructive font-bold">(-ve)</span>
+                {isDeposita ? 'Dep' : 'CC'} Bag Closure BAG no. <span className="text-destructive font-bold">(-ve)</span>
               </td>
               <td className="px-3 py-1.5 text-center text-xs text-muted-foreground align-middle">—</td>
               <td className="px-3 py-1.5">
@@ -1115,29 +1118,30 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
         </div>
       </Section>
 
-      {/* 2.1 Banking — full width, below 2 */}
-      <Section title="2.1 Banking" color="blue">
-        <DataRow label="Charges cents per R100 (incl)">
-          <CurrencyInput
-            value={form.bankChargesRate}
-            onChange={(v) => setForm((f) => ({ ...f, bankChargesRate: v }))}
-            className="w-[120px]"
-            placeholder="37.9000"
-            decimals={4}
-          />
-        </DataRow>
-        <DataRow label="Bank Charges">
-          <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
-            <CurrencyDisplay value={bankChargesCalc} />
-          </div>
-        </DataRow>
-        <DataRow label="Banking (net deposited)">
-          <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
-            <CurrencyDisplay value={bankingCalc} />
-          </div>
-        </DataRow>
-      </Section>
-
+      {/* 2.1 Banking — full width, below 2 (hidden when CIT = Deposita) */}
+      {!isDeposita && (
+        <Section title="2.1 Banking" color="blue">
+          <DataRow label="Charges cents per R100 (incl)">
+            <CurrencyInput
+              value={form.bankChargesRate}
+              onChange={(v) => setForm((f) => ({ ...f, bankChargesRate: v }))}
+              className="w-[120px]"
+              placeholder="37.9000"
+              decimals={4}
+            />
+          </DataRow>
+          <DataRow label="Bank Charges">
+            <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
+              <CurrencyDisplay value={bankChargesCalc} />
+            </div>
+          </DataRow>
+          <DataRow label="Banking (net deposited)">
+            <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
+              <CurrencyDisplay value={bankingCalc} />
+            </div>
+          </DataRow>
+        </Section>
+      )}
       <ManualPumpReadings selectedDate={selectedDate} />
 
       {/* 3. Airtime / Lotto Commissions — only shown when relevant fields are active */}

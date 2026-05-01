@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useMasterDataStore, type TankDescription, SITE_SYSTEM_OPTIONS, type SiteSystem } from '@/store/masterDataStore';
+import { useMasterDataStore, type TankDescription, SITE_SYSTEM_OPTIONS, type SiteSystem, CASH_IN_TRANSIT_OPTIONS, type CashInTransit } from '@/store/masterDataStore';
 import { toast } from '@/hooks/use-toast';
 import { SpeedpointTerminalsSettings } from './SpeedpointTerminalsSettings';
 import { PumpLayoutSettings } from './PumpLayoutSettings';
@@ -319,7 +319,7 @@ export function MasterDataSettings() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
           Site Name
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-6xl">
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
               Site / Branch Name
@@ -362,6 +362,41 @@ export function MasterDataSettings() {
                         if (store.siteSystem === opt) return;
                         store.setSiteSystem(opt as SiteSystem);
                         toast({ title: 'Site system updated', description: `Now set to "${opt}".` });
+                      }}
+                      className={
+                        'px-4 py-1.5 text-sm rounded-md border transition-colors ' +
+                        (active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-muted')
+                      }
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
+              Cash In Transit
+            </div>
+            <div className="p-3 bg-muted/20 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Choose the cash-in-transit provider. Switches "Cash Connect / CC" labels and hides bank-charges/expected-banking when set to Deposita.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {CASH_IN_TRANSIT_OPTIONS.map(opt => {
+                  const active = store.cashInTransit === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        if (store.cashInTransit === opt) return;
+                        store.setCashInTransit(opt as CashInTransit);
+                        toast({ title: 'Cash in transit updated', description: `Now set to "${opt}".` });
                       }}
                       className={
                         'px-4 py-1.5 text-sm rounded-md border transition-colors ' +

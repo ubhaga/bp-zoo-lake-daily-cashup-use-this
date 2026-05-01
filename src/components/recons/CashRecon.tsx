@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
+import { useMasterDataStore } from '@/store/masterDataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { SourceLink } from '@/components/ui/SourceLink';
@@ -25,6 +26,10 @@ const BANKING_OB_SEED = 60320.42; // outstanding from Feb
 
 export function CashRecon({ filterMonth }: CashReconProps) {
   const { cashups, managerEntries, getCashupByDate, getManagerEntryByDate } = useCashupStore();
+  const cashInTransit = useMasterDataStore(s => s.cashInTransit);
+  const isDeposita = cashInTransit === 'Deposita';
+  const citShortLbl = isDeposita ? 'Dep' : 'CC';
+  const citFullLbl = isDeposita ? 'Deposita' : 'Cash Connect';
 
   type BankLine = { id: string; amount: number; description: string; transaction_date: string };
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
@@ -255,14 +260,16 @@ export function CashRecon({ filterMonth }: CashReconProps) {
       <div className="bg-card border rounded-lg overflow-x-clip">
         <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
           <h3 className="font-semibold text-sm">
-            Cash Connect Reconciliation — {format(monthStart, 'MMMM yyyy')}
+            {citFullLbl} Reconciliation — {format(monthStart, 'MMMM yyyy')}
           </h3>
           <Button size="sm" variant="outline" onClick={() => {
-            downloadCsv(
-              ['Date', 'CC Opening', 'EP Opening', 'Total Opening', 'CC Daily', 'EP Daily', 'CC Transfer In', 'CC Bag Closure', 'EP Bag Closure', 'Deep Frozen CC', 'CC Closing', 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'],
-              dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]),
-              `cash-connect-recon-${filterMonth}.csv`
-            );
+            const headers = isDeposita
+              ? ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Stmt', 'Outstanding']
+              : ['Date', `${citShortLbl} Opening`, 'EP Opening', 'Total Opening', `${citShortLbl} Daily`, 'EP Daily', `${citShortLbl} Transfer In`, `${citShortLbl} Bag Closure`, 'EP Bag Closure', `Deep Frozen ${citShortLbl}`, `${citShortLbl} Closing`, 'EP Closing', 'Total Closing', 'Bank Charges', 'Expected Banking', 'Bank Stmt', 'Outstanding'];
+            const rows = isDeposita
+              ? dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankActual, r.bankRunningBalance])
+              : dailyRows.map(r => [r.date, r.ccOpening, r.easypayOpening, r.totalOpening, r.ccDailyCashup, r.easypayDailyCashup, r.ccTransferIn, r.ccBagClosure, r.easypayBagClosure, r.ccDeepFrozen, r.ccClosing, r.easypayClosing, r.totalClosing, r.bankCharges, r.bankingExpected, r.bankActual, r.bankRunningBalance]);
+            downloadCsv(headers, rows, `${isDeposita ? 'deposita' : 'cash-connect'}-recon-${filterMonth}.csv`);
           }}>
             <Download className="h-3.5 w-3.5 mr-1" />Export CSV
           </Button>
@@ -272,21 +279,21 @@ export function CashRecon({ filterMonth }: CashReconProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[90px]">Date</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">CC Opening</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px]">{citShortLbl} Opening</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Easypay Opening</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold bg-muted/30">= Total Opening</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px] border-l">+ CC Daily</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] border-l">+ {citShortLbl} Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ EP Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Transfer In</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− CC Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px]">− {citShortLbl} Bag Closure</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− EP Bag Closure</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− Deep Frozen</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px] font-semibold">CC Closing</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] font-semibold">{citShortLbl} Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">EP Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[100px] font-semibold bg-primary/10">= Total Closing</TableHead>
-                <TableHead className="text-right text-xs border-l min-w-[80px]">Bank Charges</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">Expected Banking</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">Bank Stmt</TableHead>
+                {!isDeposita && <TableHead className="text-right text-xs border-l min-w-[80px]">Bank Charges</TableHead>}
+                {!isDeposita && <TableHead className="text-right text-xs min-w-[90px]">Expected Banking</TableHead>}
+                <TableHead className={`text-right text-xs min-w-[90px]${isDeposita ? ' border-l' : ''}`}>Bank Stmt</TableHead>
                 <TableHead className="text-right text-xs min-w-[100px]">Outstanding</TableHead>
               </TableRow>
             </TableHeader>
@@ -296,9 +303,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableRow className="bg-muted/40 font-semibold">
                   <TableCell className="text-xs">Opening Balance</TableCell>
                   <TableCell colSpan={12}></TableCell>
-                  <TableCell className="border-l"></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
+                  {!isDeposita && <TableCell className="border-l"></TableCell>}
+                  {!isDeposita && <TableCell></TableCell>}
+                  <TableCell className={isDeposita ? 'border-l' : ''}></TableCell>
                   <TableCell className="text-right text-xs font-semibold">
                     <CurrencyDisplay value={bankingOB} />
                   </TableCell>
@@ -361,17 +368,21 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                       <CurrencyDisplay value={row.totalClosing} />
                     </TableCell>
                     {/* Bank matching */}
-                    <TableCell className="text-right text-xs border-l">
-                      {row.bankCharges > 0
-                        ? <SourceLink date={row.date} source="manager-daily" className="text-orange-600"><CurrencyDisplay value={row.bankCharges} /></SourceLink>
-                        : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-right text-xs">
-                      {row.bankingExpected > 0
-                        ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.bankingExpected} /></SourceLink>
-                        : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-right text-xs">
+                    {!isDeposita && (
+                      <TableCell className="text-right text-xs border-l">
+                        {row.bankCharges > 0
+                          ? <SourceLink date={row.date} source="manager-daily" className="text-orange-600"><CurrencyDisplay value={row.bankCharges} /></SourceLink>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
+                    {!isDeposita && (
+                      <TableCell className="text-right text-xs">
+                        {row.bankingExpected > 0
+                          ? <SourceLink date={row.date} source="manager-daily"><CurrencyDisplay value={row.bankingExpected} /></SourceLink>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
+                    <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
                       {row.bankActual > 0
                         ? <CurrencyDisplay value={row.bankActual} />
                         : <span className="text-muted-foreground">—</span>}
@@ -422,13 +433,17 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableCell className="text-right text-xs font-bold bg-primary/10">
                   <CurrencyDisplay value={runningCC + runningEasypay} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs border-l">
-                  <CurrencyDisplay value={totalBankCharges} highlight />
-                </TableCell>
-                <TableCell className="text-right text-xs">
-                  <CurrencyDisplay value={totalBankingExpected} highlight />
-                </TableCell>
-                <TableCell className="text-right text-xs">
+                {!isDeposita && (
+                  <TableCell className="text-right text-xs border-l">
+                    <CurrencyDisplay value={totalBankCharges} highlight />
+                  </TableCell>
+                )}
+                {!isDeposita && (
+                  <TableCell className="text-right text-xs">
+                    <CurrencyDisplay value={totalBankingExpected} highlight />
+                  </TableCell>
+                )}
+                <TableCell className={`text-right text-xs${isDeposita ? ' border-l' : ''}`}>
                   <CurrencyDisplay value={totalBankActual} highlight />
                 </TableCell>
                 <TableCell className={`text-right text-xs font-bold ${

@@ -46,3 +46,4 @@
 - [Fuel Recon](mem://features/fuel-recon) — 4 sub-tabs parsing day-end RPTs for tank/meter/POS variance analysis, tank config in Settings
 - [Day End Debtors Auto-Fill](mem://features/day-end-debtors-autofill) — Section 7 MOP Account auto-populates from EOD Debtors Transactions on .rpt upload
 - [Bank Rules](mem://features/bank-rules) — Auto-allocate bank lines to creditors/debtors/BLD/Easypay/Lotto/Cash CC by reference keywords + amount range
+- [Cash In Transit Setting](mem://features/cash-in-transit-setting) — Cash Connect | Deposita toggle; swaps labels and hides 2.1 Banking + Bank Charges/Expected Banking when Deposita

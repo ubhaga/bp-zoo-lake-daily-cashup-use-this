@@ -22,7 +22,7 @@ import { DebtorsRecon } from '@/components/recons/DebtorsRecon';
 
 export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'reports' | 'recons'; onNavigateToDate?: (date: string) => void }) {
   const { cashups, managerEntries } = useCashupStore();
-  const { speedpointTerminals } = useMasterDataStore();
+  const { speedpointTerminals, cashInTransit } = useMasterDataStore();
   const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const monthCashups = cashups.filter(c => c.month === filterMonth);
@@ -976,7 +976,7 @@ export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'report
           <TabsTrigger value="creditors">Creditors</TabsTrigger>
           <TabsTrigger value="debtors">Debtors</TabsTrigger>
           <TabsTrigger value="airtime">Airtime / Lotto</TabsTrigger>
-          <TabsTrigger value="cash">Cash CC & Coins</TabsTrigger>
+          <TabsTrigger value="cash">{cashInTransit === 'Deposita' ? 'Cash Dep & Coins' : 'Cash CC & Coins'}</TabsTrigger>
           <TabsTrigger value="other-adj">Other Adj.</TabsTrigger>
         </TabsList>
         )}

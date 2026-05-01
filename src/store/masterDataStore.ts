@@ -45,6 +45,14 @@ export interface SpeedpointTerminal {
 export type SiteSystem = 'Branch' | 'ESO' | 'NetAcc';
 export const SITE_SYSTEM_OPTIONS: SiteSystem[] = ['Branch', 'ESO', 'NetAcc'];
 
+export type CashInTransit = 'Cash Connect' | 'Deposita';
+export const CASH_IN_TRANSIT_OPTIONS: CashInTransit[] = ['Cash Connect', 'Deposita'];
+
+/** Short label for the active CIT provider — "CC" for Cash Connect, "Dep" for Deposita. */
+export function citShort(cit: CashInTransit): string {
+  return cit === 'Deposita' ? 'Dep' : 'CC';
+}
+
 const DEFAULT_SPEEDPOINT_TERMINALS: SpeedpointTerminal[] = [
   { name: 'Term 247608',       shift: 'both', bankPattern: '247608' },
   { name: 'Forecourt 929661',  shift: 'both', bankPattern: '929661' },
@@ -62,6 +70,7 @@ export function getTankColor(tanks: TankDescription[], gradeIdOrDesc: string): s
 interface MasterDataStore {
   siteName: string;
   siteSystem: SiteSystem;
+  cashInTransit: CashInTransit;
   payoutSuppliers: string[];
   eftSuppliers: string[];
   accounts: string[];
@@ -82,6 +91,7 @@ interface MasterDataStore {
 
   setSiteName: (name: string) => void;
   setSiteSystem: (system: SiteSystem) => void;
+  setCashInTransit: (cit: CashInTransit) => void;
 
   addPayoutSupplier: (name: string) => void;
   updatePayoutSupplier: (old: string, next: string) => void;
@@ -135,6 +145,7 @@ async function persistKey(key: string, data: unknown) {
 export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   siteName: 'Shell Craighall',
   siteSystem: 'Branch' as SiteSystem,
+  cashInTransit: 'Cash Connect' as CashInTransit,
   payoutSuppliers: [...SUPPLIERS].sort(),
   eftSuppliers: DEFAULT_EFT_SUPPLIERS,
   accounts: [...DEFAULT_ACCOUNTS],
@@ -156,6 +167,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
       set({
         siteName: (map.siteName as string) ?? get().siteName,
         siteSystem: ((map.siteSystem as SiteSystem) ?? get().siteSystem),
+        cashInTransit: ((map.cashInTransit as CashInTransit) ?? get().cashInTransit),
         payoutSuppliers: (map.payoutSuppliers as string[]) ?? get().payoutSuppliers,
         eftSuppliers: (map.eftSuppliers as string[]) ?? get().eftSuppliers,
         accounts: (map.accounts as string[]) ?? get().accounts,
@@ -203,6 +215,11 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   setSiteSystem: (system) => {
     set({ siteSystem: system });
     persistKey('siteSystem', system);
+  },
+
+  setCashInTransit: (cit) => {
+    set({ cashInTransit: cit });
+    persistKey('cashInTransit', cit);
   },
 
   addPayoutSupplier: (name) => {

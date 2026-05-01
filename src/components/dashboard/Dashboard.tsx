@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
+import { useMasterDataStore } from '@/store/masterDataStore';
 import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { CheckCircle, XCircle, AlertCircle, CalendarDays, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -45,6 +46,8 @@ export function Dashboard({ selectedDate, onNavigateToDate }: Props) {
 
 function DailyDashboard({ selectedDate }: Props) {
   const { getCashupByDate, getManagerEntryByDate } = useCashupStore();
+  const cashInTransit = useMasterDataStore(s => s.cashInTransit);
+  const citLabel = cashInTransit === 'Deposita' ? 'Deposita' : 'Cash Connect';
   const cashup = getCashupByDate(selectedDate);
   const managerEntry = getManagerEntryByDate(selectedDate);
 
@@ -172,7 +175,7 @@ function DailyDashboard({ selectedDate }: Props) {
                 { label: 'Total Payouts', v: shopPayoutsTotal + (cashup.shop.lottoPayouts ?? 0) },
                 { label: 'Total Receipts', v: shopReceipts },
                 { label: 'Shop Total Takings', v: shopTakings, bold: true },
-                { label: 'Cash Connect', v: cashConnectTotal },
+                { label: citLabel, v: cashConnectTotal },
                 { label: 'Shop Speedpoints', v: shopSP },
                 { label: 'OPT Speedpoints', v: optSP },
                 { label: 'Total Speedpoints', v: shopSP + optSP, bold: true },
@@ -196,7 +199,7 @@ function DailyDashboard({ selectedDate }: Props) {
                 { label: 'Total VAT', v: invVat },
                 { label: 'Branch Day End', v: managerEntry.branchDayEndTotal },
                 { label: 'Coins Balance', v: managerEntry.coinsOpeningBalance + managerEntry.dailyCoins - managerEntry.ccBagClosureCoins },
-                { label: 'Cash Connect Balance', v: managerEntry.cashConnectOpeningBalance + managerEntry.cashDepositedCashConnect - managerEntry.ccBagClosureCashConnect },
+                { label: `${citLabel} Balance`, v: managerEntry.cashConnectOpeningBalance + managerEntry.cashDepositedCashConnect - managerEntry.ccBagClosureCashConnect },
                 { label: 'Banking', v: managerEntry.banking, bold: true },
               ].map(({ label, v, bold }) => (
                 <div key={label} className={`flex justify-between text-sm ${bold ? 'font-semibold border-t pt-1' : ''}`}>
