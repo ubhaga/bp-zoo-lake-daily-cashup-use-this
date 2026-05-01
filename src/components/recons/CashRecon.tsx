@@ -285,8 +285,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableHead className="text-right text-xs min-w-[90px] border-l">+ {citShortLbl} Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ EP Daily</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">+ Transfer In</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− {citShortLbl} Bag Closure</TableHead>
-                <TableHead className="text-right text-xs min-w-[90px]">− EP Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-50">− {citShortLbl} Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-50">− EP Bag Closure</TableHead>
+                <TableHead className="text-right text-xs min-w-[90px] bg-amber-100 font-semibold">= Bag Total</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px]">− Deep Frozen</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">{citShortLbl} Closing</TableHead>
                 <TableHead className="text-right text-xs min-w-[90px] font-semibold">EP Closing</TableHead>
