@@ -46,6 +46,8 @@ export function Dashboard({ selectedDate, onNavigateToDate }: Props) {
 
 function DailyDashboard({ selectedDate }: Props) {
   const { getCashupByDate, getManagerEntryByDate } = useCashupStore();
+  const cashInTransit = useMasterDataStore(s => s.cashInTransit);
+  const citLabel = cashInTransit === 'Deposita' ? 'Deposita' : 'Cash Connect';
   const cashup = getCashupByDate(selectedDate);
   const managerEntry = getManagerEntryByDate(selectedDate);
 
