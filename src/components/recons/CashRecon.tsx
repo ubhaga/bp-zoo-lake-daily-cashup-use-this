@@ -421,11 +421,14 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 <TableCell className="text-right text-xs">
                   <CurrencyDisplay value={totalCCTransferIn} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs">
+                <TableCell className="text-right text-xs bg-amber-50">
                   <CurrencyDisplay value={totalCCBagClosure} highlight />
                 </TableCell>
-                <TableCell className="text-right text-xs">
+                <TableCell className="text-right text-xs bg-amber-50">
                   <CurrencyDisplay value={totalEasypayBagClosure} highlight />
+                </TableCell>
+                <TableCell className="text-right text-xs bg-amber-100 font-bold">
+                  <CurrencyDisplay value={totalCCBagClosure + totalEasypayBagClosure} highlight />
                 </TableCell>
                 <TableCell className="text-right text-xs">
                   <CurrencyDisplay value={totalCCDeepFrozen} highlight />
