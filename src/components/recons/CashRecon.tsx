@@ -784,6 +784,85 @@ export function CashRecon({ filterMonth }: CashReconProps) {
           </Table>
         </div>
       </div>
+
+      {/* Floating Unmatched Bank Credits panel (Deposita) */}
+      {isDeposita && unmatchedCredits.length > 0 && (
+        <div
+          className="bg-card border rounded-lg shadow-lg overflow-x-clip w-80 fixed z-50"
+          style={{ top: unmatchedPanelPos.top, left: unmatchedPanelPos.left }}
+        >
+          <div
+            onMouseDown={handlePanelDragStart}
+            className="px-3 py-2 border-b bg-destructive/10 cursor-move select-none"
+            title="Drag to move"
+          >
+            <h3 className="font-semibold text-sm text-destructive flex items-center gap-2">
+              <span className="text-muted-foreground">⠿</span>
+              Unreconciled Bank Credits ({unmatchedCredits.length})
+            </h3>
+            <p className="text-xs text-muted-foreground">Drag header to move · Drag rows onto a Bag Closure date to match</p>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {unmatchedCredits.map(l => (
+              <div
+                key={l.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, { bankLineId: l.id, remaining: l.remaining, description: l.description, amount: Number(l.amount), date: l.transaction_date })}
+                className="cursor-grab active:cursor-grabbing hover:bg-muted/30 border-b last:border-b-0 px-3 py-2 text-xs flex flex-col gap-0.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-muted-foreground">{l.transaction_date}</span>
+                  <span className="font-semibold"><CurrencyDisplay value={l.remaining} /></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">⠿</span>
+                  <span className="truncate flex-1" title={l.description}>{l.description}</span>
+                </div>
+                {l.used > 0 && (
+                  <div className="text-[10px] text-muted-foreground">
+                    Original <CurrencyDisplay value={Number(l.amount)} /> · matched <CurrencyDisplay value={l.used} />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="px-3 py-2 bg-secondary font-semibold text-xs flex justify-between">
+              <span>Total Unreconciled</span>
+              <CurrencyDisplay value={unmatchedCredits.reduce((s, l) => s + l.remaining, 0)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split-amount dialog */}
+      <Dialog open={!!splitDialog} onOpenChange={(o) => { if (!o) { setSplitDialog(null); setSplitInput(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Match bank credit</DialogTitle>
+          </DialogHeader>
+          {splitDialog && (
+            <div className="space-y-3 text-sm">
+              <div>Bank credit <strong><CurrencyDisplay value={splitDialog.payload.amount} /></strong> from <strong>{splitDialog.payload.date}</strong></div>
+              <div className="text-xs text-muted-foreground truncate">{splitDialog.payload.description}</div>
+              <div>Remaining on credit: <CurrencyDisplay value={splitDialog.payload.remaining} /></div>
+              <div>Target row: <strong>{format(new Date(splitDialog.cashupDate), 'dd MMM yyyy')}</strong></div>
+              <div>
+                <label className="text-xs font-medium">Amount to match</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={splitInput}
+                  onChange={(e) => setSplitInput(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSplitDialog(null); setSplitInput(''); }}>Cancel</Button>
+            <Button onClick={confirmSplit}>Match</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
