@@ -91,6 +91,7 @@ interface MasterDataStore {
 
   setSiteName: (name: string) => void;
   setSiteSystem: (system: SiteSystem) => void;
+  setCashInTransit: (cit: CashInTransit) => void;
 
   addPayoutSupplier: (name: string) => void;
   updatePayoutSupplier: (old: string, next: string) => void;
