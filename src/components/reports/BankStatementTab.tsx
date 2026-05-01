@@ -5,7 +5,8 @@ import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Trash2, Download, X } from 'lucide-react';
+import { Upload, Trash2, Download, X, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useBankAllocations } from '@/hooks/useBankAllocations';
 import { loadBankRules, computeAllocationsFromRules } from '@/lib/bankRules';
@@ -38,6 +39,8 @@ interface Props {
 export function BankStatementTab({ filterMonth, monthLabel }: Props) {
   const [lines, setLines] = useState<BankLine[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
   const { eftSuppliers, accounts, speedpointTerminals } = useMasterDataStore();
   const { allocations, upsert: upsertAllocation } = useBankAllocations(filterMonth);
   const managerEntries = useCashupStore((s) => s.managerEntries);
@@ -377,6 +380,29 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
     }
   };
 
+  const startEditDescription = (l: BankLine) => {
+    setEditingId(l.id);
+    setEditValue(l.description);
+  };
+
+  const saveEditDescription = async () => {
+    if (!editingId) return;
+    const id = editingId;
+    const newDesc = editValue.trim();
+    const original = lines.find(l => l.id === id);
+    setEditingId(null);
+    if (!original || newDesc === original.description) return;
+    if (!newDesc) { toast.error('Description cannot be empty'); return; }
+    const newTerminal = matchTerminal(newDesc);
+    const { error } = await supabase
+      .from('bank_statement_lines')
+      .update({ description: newDesc, matched_terminal: newTerminal } as never)
+      .eq('id', id);
+    if (error) { toast.error('Update failed: ' + error.message); return; }
+    setLines(prev => prev.map(l => l.id === id ? { ...l, description: newDesc, matched_terminal: newTerminal } : l));
+    toast.success('Description updated');
+  };
+
   return (
     <div className="bg-card border rounded-lg overflow-x-clip">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
@@ -457,7 +483,31 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
               {visibleLines.map(l => (
                 <TableRow key={l.id} className={l.matched_terminal ? 'hover:bg-muted/30' : 'bg-muted/10 hover:bg-muted/30'}>
                   <TableCell className="text-sm font-mono">{l.transaction_date}</TableCell>
-                  <TableCell className="text-sm max-w-[250px] truncate">{l.description}</TableCell>
+                  <TableCell className="text-sm max-w-[280px]">
+                    {editingId === l.id ? (
+                      <Input
+                        autoFocus
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveEditDescription}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); saveEditDescription(); }
+                          else if (e.key === 'Escape') { e.preventDefault(); setEditingId(null); }
+                        }}
+                        className="h-7 text-sm"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEditDescription(l)}
+                        title="Click to edit description"
+                        className="group flex items-center gap-1 text-left w-full truncate hover:text-primary"
+                      >
+                        <span className="truncate">{l.description}</span>
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                      </button>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right"><CurrencyDisplay value={l.amount} /></TableCell>
                   <TableCell className="text-sm">
                     {l.matched_terminal ? (
