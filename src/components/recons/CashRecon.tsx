@@ -98,7 +98,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     allPriorBankLines.forEach(line => {
       const reconType = priorAllocByLine.get(line.id);
       const isCashCc =
-        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes('CCONNECT'));
+        reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && line.description.toUpperCase().trim().includes(citBankPatternUpper));
       if (isCashCc) {
         priorActual += line.amount;
       }
