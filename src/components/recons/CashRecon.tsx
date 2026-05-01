@@ -87,7 +87,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   //  - Cash Connect: seeded with Feb 2026 carry-in (BANKING_OB_SEED), then adds prior expected banking
   //    (section 2.1) and subtracts prior CCONNECT bank deposits.
   //  - Deposita: no section 2.1 / no expected banking, no Feb carry-in. Outstanding accumulates from
-  //    prior Bag Totals (CIT + EP bag closures) less prior Deposita bank deposits.
+  //    prior Dep Bag Closures only less prior Deposita bank deposits.
   const bankingOB = (() => {
     const monthStartStr = format(monthStart, 'yyyy-MM-dd');
 
@@ -103,11 +103,11 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     });
 
     if (isDeposita) {
-      // Sum all prior Bag Totals (CIT bag closure + EP bag closure) from seed date forward
-      const priorBagTotal = managerEntries
+      // Sum all prior Dep Bag Closures from seed date forward; EP Bag Closure is not part of Deposita outstanding.
+      const priorDepBagClosure = managerEntries
         .filter(e => e.date >= SEED_DATE && e.date < monthStartStr)
-        .reduce((s, e) => s + Math.abs(e.ccBagClosureCashConnect ?? 0) + Math.abs(e.ccBagClosureEasypay ?? 0), 0);
-      return priorBagTotal - priorActual;
+        .reduce((s, e) => s + Math.abs(e.ccBagClosureCashConnect ?? 0), 0);
+      return priorDepBagClosure - priorActual;
     }
 
     // Cash Connect: seed + prior expected banking − prior actual deposits
@@ -220,7 +220,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     const coinsClosing = coinsOpening + coinsDailyCashup - coinsBagClosure - transferFromCoins;
 
     const bankActual = cconnectByDate.get(dateStr) ?? 0;
-    const dailyDeposit = isDeposita ? (ccBagClosure + easypayBagClosure) : bankingExpected;
+    const dailyDeposit = isDeposita ? ccBagClosure : bankingExpected;
     bankRunning = bankRunning + dailyDeposit - bankActual;
     const bankMatched = dailyDeposit > 0 && Math.abs(dailyDeposit - bankActual) < 0.01;
 
