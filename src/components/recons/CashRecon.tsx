@@ -27,6 +27,8 @@ const BANKING_OB_SEED = 60320.42; // outstanding from Feb
 export function CashRecon({ filterMonth }: CashReconProps) {
   const { cashups, managerEntries, getCashupByDate, getManagerEntryByDate } = useCashupStore();
   const cashInTransit = useMasterDataStore(s => s.cashInTransit);
+  const citBankPattern = useMasterDataStore(s => s.cashInTransitBankPatterns[s.cashInTransit] ?? '');
+  const citBankPatternUpper = citBankPattern.trim().toUpperCase();
   const isDeposita = cashInTransit === 'Deposita';
   const citShortLbl = isDeposita ? 'Dep' : 'CC';
   const citFullLbl = isDeposita ? 'Deposita' : 'Cash Connect';
@@ -72,7 +74,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   bankLines.forEach(line => {
     const desc = line.description.toUpperCase().trim();
     const reconType = allocByLine.get(line.id);
-    const isCashCc = reconType === 'cash_cc' || (!reconType && desc.includes('CCONNECT'));
+    const isCashCc = reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && desc.includes(citBankPatternUpper));
     if (isCashCc) {
       const dateStr = parseBankDate(line.transaction_date);
       if (dateStr) {
@@ -96,7 +98,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     allPriorBankLines.forEach(line => {
       const reconType = priorAllocByLine.get(line.id);
       const isCashCc =
-        reconType === 'cash_cc' || (!reconType && line.description.toUpperCase().trim().includes('CCONNECT'));
+        reconType === 'cash_cc' || (!reconType && citBankPatternUpper !== '' && line.description.toUpperCase().trim().includes(citBankPatternUpper));
       if (isCashCc) {
         priorActual += line.amount;
       }

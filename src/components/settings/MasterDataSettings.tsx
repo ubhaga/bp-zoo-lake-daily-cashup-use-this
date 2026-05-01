@@ -382,7 +382,7 @@ export function MasterDataSettings() {
             <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
               Cash In Transit
             </div>
-            <div className="p-3 bg-muted/20 space-y-2">
+            <div className="p-3 bg-muted/20 space-y-3">
               <p className="text-xs text-muted-foreground">
                 Choose the cash-in-transit provider. Switches "Cash Connect / CC" labels and hides bank-charges/expected-banking when set to Deposita.
               </p>
@@ -409,6 +409,24 @@ export function MasterDataSettings() {
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-xs text-muted-foreground">
+                  Bank statement identifier — case-insensitive substring matched against the description on the bank statement to identify CIT deposits.
+                </p>
+                {CASH_IN_TRANSIT_OPTIONS.map(opt => (
+                  <div key={opt} className="flex items-center gap-2">
+                    <label className="text-xs font-medium w-28 shrink-0">{opt}</label>
+                    <input
+                      type="text"
+                      value={store.cashInTransitBankPatterns[opt] ?? ''}
+                      onChange={(e) => store.setCashInTransitBankPattern(opt as CashInTransit, e.target.value)}
+                      placeholder={opt === 'Cash Connect' ? 'e.g. CCONNECT' : 'e.g. DEPOSITA'}
+                      className="flex-1 px-2 py-1 text-sm rounded-md border border-input bg-background"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>

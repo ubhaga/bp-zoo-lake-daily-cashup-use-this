@@ -71,6 +71,8 @@ interface MasterDataStore {
   siteName: string;
   siteSystem: SiteSystem;
   cashInTransit: CashInTransit;
+  /** Bank statement identifier per CIT provider (case-insensitive substring match against description). */
+  cashInTransitBankPatterns: Record<CashInTransit, string>;
   payoutSuppliers: string[];
   eftSuppliers: string[];
   accounts: string[];
@@ -92,6 +94,7 @@ interface MasterDataStore {
   setSiteName: (name: string) => void;
   setSiteSystem: (system: SiteSystem) => void;
   setCashInTransit: (cit: CashInTransit) => void;
+  setCashInTransitBankPattern: (cit: CashInTransit, pattern: string) => void;
 
   addPayoutSupplier: (name: string) => void;
   updatePayoutSupplier: (old: string, next: string) => void;
@@ -158,6 +161,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   loaded: false,
   payoutSupplierCategories: {},
   eftSupplierCategories: {},
+  cashInTransitBankPatterns: { 'Cash Connect': 'CCONNECT', 'Deposita': '' },
 
   loadAll: async () => {
     const { data } = await supabase.from('master_data').select('*');
@@ -168,6 +172,7 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
         siteName: (map.siteName as string) ?? get().siteName,
         siteSystem: ((map.siteSystem as SiteSystem) ?? get().siteSystem),
         cashInTransit: ((map.cashInTransit as CashInTransit) ?? get().cashInTransit),
+        cashInTransitBankPatterns: ((map.cashInTransitBankPatterns as Record<CashInTransit, string>) ?? get().cashInTransitBankPatterns),
         payoutSuppliers: (map.payoutSuppliers as string[]) ?? get().payoutSuppliers,
         eftSuppliers: (map.eftSuppliers as string[]) ?? get().eftSuppliers,
         accounts: (map.accounts as string[]) ?? get().accounts,
@@ -220,6 +225,14 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   setCashInTransit: (cit) => {
     set({ cashInTransit: cit });
     persistKey('cashInTransit', cit);
+  },
+
+  setCashInTransitBankPattern: (cit, pattern) => {
+    set(s => {
+      const next = { ...s.cashInTransitBankPatterns, [cit]: pattern };
+      persistKey('cashInTransitBankPatterns', next);
+      return { cashInTransitBankPatterns: next };
+    });
   },
 
   addPayoutSupplier: (name) => {
