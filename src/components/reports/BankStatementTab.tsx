@@ -483,7 +483,31 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
               {visibleLines.map(l => (
                 <TableRow key={l.id} className={l.matched_terminal ? 'hover:bg-muted/30' : 'bg-muted/10 hover:bg-muted/30'}>
                   <TableCell className="text-sm font-mono">{l.transaction_date}</TableCell>
-                  <TableCell className="text-sm max-w-[250px] truncate">{l.description}</TableCell>
+                  <TableCell className="text-sm max-w-[280px]">
+                    {editingId === l.id ? (
+                      <Input
+                        autoFocus
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveEditDescription}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); saveEditDescription(); }
+                          else if (e.key === 'Escape') { e.preventDefault(); setEditingId(null); }
+                        }}
+                        className="h-7 text-sm"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEditDescription(l)}
+                        title="Click to edit description"
+                        className="group flex items-center gap-1 text-left w-full truncate hover:text-primary"
+                      >
+                        <span className="truncate">{l.description}</span>
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                      </button>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right"><CurrencyDisplay value={l.amount} /></TableCell>
                   <TableCell className="text-sm">
                     {l.matched_terminal ? (
