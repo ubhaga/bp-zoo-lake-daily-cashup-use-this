@@ -220,8 +220,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     const coinsClosing = coinsOpening + coinsDailyCashup - coinsBagClosure - transferFromCoins;
 
     const bankActual = cconnectByDate.get(dateStr) ?? 0;
-    bankRunning = bankRunning + bankingExpected - bankActual;
-    const bankMatched = bankingExpected > 0 && Math.abs(bankingExpected - bankActual) < 0.01;
+    const dailyDeposit = isDeposita ? (ccBagClosure + easypayBagClosure) : bankingExpected;
+    bankRunning = bankRunning + dailyDeposit - bankActual;
+    const bankMatched = dailyDeposit > 0 && Math.abs(dailyDeposit - bankActual) < 0.01;
 
     dailyRows.push({
       date: dateStr,
