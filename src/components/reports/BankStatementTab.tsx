@@ -105,7 +105,16 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
       .select('*')
       .eq('month', filterMonth)
       .order('transaction_date');
-    setLines((data ?? []) as unknown as BankLine[]);
+    const rows = (data ?? []) as unknown as BankLine[];
+    // Re-sort client-side using parsed ISO date so mixed upload formats are still
+    // chronologically ordered after multiple CSV uploads.
+    const sorted = [...rows].sort((a, b) => {
+      const da = parseBankStatementDate(a.transaction_date) ?? a.transaction_date;
+      const db = parseBankStatementDate(b.transaction_date) ?? b.transaction_date;
+      if (da === db) return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return da < db ? -1 : 1;
+    });
+    setLines(sorted);
   }, [filterMonth]);
 
   useEffect(() => { loadLines(); }, [loadLines]);
