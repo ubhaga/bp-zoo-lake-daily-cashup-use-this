@@ -83,17 +83,15 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     }
   });
 
-  // Compute banking opening balance: sum of all prior months' expected banking minus prior CCONNECT bank deposits
+  // Compute banking opening balance.
+  //  - Cash Connect: seeded with Feb 2026 carry-in (BANKING_OB_SEED), then adds prior expected banking
+  //    (section 2.1) and subtracts prior CCONNECT bank deposits.
+  //  - Deposita: no section 2.1 / no expected banking, no Feb carry-in. Outstanding accumulates from
+  //    prior Bag Totals (CIT + EP bag closures) less prior Deposita bank deposits.
   const bankingOB = (() => {
     const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-    // Start with seed OB for March 2026
-    let ob = filterMonth >= BANKING_OB_SEED_MONTH ? BANKING_OB_SEED : 0;
-    // Add all expected banking from seed month onwards, before current month
-    const priorExpected = managerEntries
-      .filter(e => e.date >= BANKING_OB_SEED_MONTH + '-01' && e.date < monthStartStr)
-      .reduce((s, e) => s + (e.banking ?? 0), 0);
-    ob += priorExpected;
-    // Subtract all CCONNECT bank deposits from prior months (seed month onwards)
+
+    // Subtract prior CIT bank deposits (matches active provider's bank pattern)
     let priorActual = 0;
     allPriorBankLines.forEach(line => {
       const reconType = priorAllocByLine.get(line.id);
@@ -103,6 +101,21 @@ export function CashRecon({ filterMonth }: CashReconProps) {
         priorActual += line.amount;
       }
     });
+
+    if (isDeposita) {
+      // Sum all prior Bag Totals (CIT bag closure + EP bag closure) from seed date forward
+      const priorBagTotal = managerEntries
+        .filter(e => e.date >= SEED_DATE && e.date < monthStartStr)
+        .reduce((s, e) => s + Math.abs(e.ccBagClosureCashConnect ?? 0) + Math.abs(e.ccBagClosureEasypay ?? 0), 0);
+      return priorBagTotal - priorActual;
+    }
+
+    // Cash Connect: seed + prior expected banking − prior actual deposits
+    let ob = filterMonth >= BANKING_OB_SEED_MONTH ? BANKING_OB_SEED : 0;
+    const priorExpected = managerEntries
+      .filter(e => e.date >= BANKING_OB_SEED_MONTH + '-01' && e.date < monthStartStr)
+      .reduce((s, e) => s + (e.banking ?? 0), 0);
+    ob += priorExpected;
     ob -= priorActual;
     return ob;
   })();
@@ -207,8 +220,9 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     const coinsClosing = coinsOpening + coinsDailyCashup - coinsBagClosure - transferFromCoins;
 
     const bankActual = cconnectByDate.get(dateStr) ?? 0;
-    bankRunning = bankRunning + bankingExpected - bankActual;
-    const bankMatched = bankingExpected > 0 && Math.abs(bankingExpected - bankActual) < 0.01;
+    const dailyDeposit = isDeposita ? (ccBagClosure + easypayBagClosure) : bankingExpected;
+    bankRunning = bankRunning + dailyDeposit - bankActual;
+    const bankMatched = dailyDeposit > 0 && Math.abs(dailyDeposit - bankActual) < 0.01;
 
     dailyRows.push({
       date: dateStr,
