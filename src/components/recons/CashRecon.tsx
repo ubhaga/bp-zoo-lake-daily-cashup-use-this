@@ -301,7 +301,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
     const easypayClosing = easypayOpening + easypayDailyCashup - easypayBagClosure;
     const coinsClosing = coinsOpening + coinsDailyCashup - coinsBagClosure - transferFromCoins;
 
-    const bankActual = cconnectByDate.get(dateStr) ?? 0;
+    const bankActual = bankStmtForDate(dateStr);
     const dailyDeposit = isDeposita ? ccBagClosure : bankingExpected;
     const bankOutstanding = isDeposita ? dailyDeposit - bankActual : bankRunning + dailyDeposit - bankActual;
     if (!isDeposita) {
