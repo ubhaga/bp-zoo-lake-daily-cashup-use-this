@@ -377,6 +377,41 @@ export function MasterDataSettings() {
               </div>
             </div>
           </div>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-slate-700 text-white px-4 py-2.5 font-semibold text-sm">
+              Cash In Transit
+            </div>
+            <div className="p-3 bg-muted/20 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Choose the cash-in-transit provider. Switches "Cash Connect / CC" labels and hides bank-charges/expected-banking when set to Deposita.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {CASH_IN_TRANSIT_OPTIONS.map(opt => {
+                  const active = store.cashInTransit === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        if (store.cashInTransit === opt) return;
+                        store.setCashInTransit(opt as CashInTransit);
+                        toast({ title: 'Cash in transit updated', description: `Now set to "${opt}".` });
+                      }}
+                      className={
+                        'px-4 py-1.5 text-sm rounded-md border transition-colors ' +
+                        (active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-muted')
+                      }
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
