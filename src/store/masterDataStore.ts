@@ -145,6 +145,7 @@ async function persistKey(key: string, data: unknown) {
 export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
   siteName: 'Shell Craighall',
   siteSystem: 'Branch' as SiteSystem,
+  cashInTransit: 'Cash Connect' as CashInTransit,
   payoutSuppliers: [...SUPPLIERS].sort(),
   eftSuppliers: DEFAULT_EFT_SUPPLIERS,
   accounts: [...DEFAULT_ACCOUNTS],
