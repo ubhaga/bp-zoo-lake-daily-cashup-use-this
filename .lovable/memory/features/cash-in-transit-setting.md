@@ -11,5 +11,6 @@ type: feature
   - Manager Daily Form: hide entire Section "2.1 Banking" (rate / Bank Charges / Banking net).
   - Cash Recon table: hide Bank Charges and Expected Banking columns (header, OB row, data rows, totals row, CSV export).
   - Cash Recon Outstanding = Dep Bag Closure less matching Bank Statement amount. Do not include EP Bag Closure or Bag Total in this outstanding calculation.
+  - Only POSITIVE bank statement credits matching the Deposita pattern are reconcilable. Auto-match: a credit pairs with a Bag Closure when both date AND amount match exactly. Anything else appears in a floating "Unreconciled Bank Credits" panel and can be drag-dropped onto any Bag Closure row. A single credit can be split across multiple rows (split dialog prompts for amount). Manual matches are stored in `cash_recon_manual_matches` (month, cashup_date, bank_line_id, amount, recon_kind='deposita').
   - All visible "Cash Connect" / "CC " labels swap to "Deposita" / "Dep " in: Manager Daily Form (column header, CC Bag Closure label, negative-closing field name), Cashier Daily Form (Cash Connect Total Sum), Dashboard (Cash Connect, Cash Connect Balance), Cash Recon title + headers, Reports tab "Cash CC & Coins" → "Cash Dep & Coins".
 - DB field/store key names (cashConnectOpeningBalance, ccBagClosureCashConnect, etc.) intentionally NOT renamed — purely a display/UX swap.
