@@ -507,7 +507,13 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 const hasData = row.ccDailyCashup > 0 || row.ccBagClosure > 0 || row.ccTransferIn > 0 || row.ccDeepFrozen > 0 || row.easypayDailyCashup > 0 || row.easypayBagClosure > 0;
 
                 return (
-                  <TableRow key={row.date} className={!hasData ? 'opacity-50' : ''}>
+                  <TableRow
+                    key={row.date}
+                    className={`${!hasData ? 'opacity-50' : ''} ${isDeposita && dragOverDate === row.date ? 'bg-primary/10 outline outline-2 outline-primary' : ''}`}
+                    onDragOver={isDeposita ? (e) => handleRowDragOver(e, row.date) : undefined}
+                    onDragLeave={isDeposita ? handleRowDragLeave : undefined}
+                    onDrop={isDeposita ? (e) => handleRowDrop(e, row.date) : undefined}
+                  >
                     <TableCell className="text-xs">
                       <SourceLink date={row.date} source="manager-daily">{format(new Date(row.date), 'dd MMM (EEE)')}</SourceLink>
                     </TableCell>
