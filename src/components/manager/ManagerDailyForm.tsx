@@ -276,7 +276,10 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     categories: CATEGORIES,
     payoutSupplierCategories,
     eftSupplierCategories,
+    cashInTransit,
   } = useMasterDataStore();
+  const isDeposita = cashInTransit === 'Deposita';
+  const citLabel = isDeposita ? 'Deposita' : 'Cash Connect';
   const existing = getManagerEntryByDate(selectedDate);
   const cashup = getCashupByDate(selectedDate);
   const isLocked = selectedDate < "2026-01-01";
