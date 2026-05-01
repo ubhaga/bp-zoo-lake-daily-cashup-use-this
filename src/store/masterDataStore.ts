@@ -216,6 +216,11 @@ export const useMasterDataStore = create<MasterDataStore>()((set, get) => ({
     persistKey('siteSystem', system);
   },
 
+  setCashInTransit: (cit) => {
+    set({ cashInTransit: cit });
+    persistKey('cashInTransit', cit);
+  },
+
   addPayoutSupplier: (name) => {
     set(s => {
       const next = [...s.payoutSuppliers, name].sort();
