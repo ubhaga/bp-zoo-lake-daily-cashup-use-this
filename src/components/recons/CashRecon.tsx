@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
 import { useMasterDataStore } from '@/store/masterDataStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,8 @@ import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { SourceLink } from '@/components/ui/SourceLink';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addDays } from 'date-fns';
 import type { ManagerDailyEntry } from '@/types/cashup';
 import { downloadCsv } from '@/lib/csvExport';
