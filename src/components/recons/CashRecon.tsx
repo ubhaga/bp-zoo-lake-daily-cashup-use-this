@@ -356,6 +356,95 @@ export function CashRecon({ filterMonth }: CashReconProps) {
   const totalCoinsBagClosure = dailyRows.reduce((s, r) => s + r.coinsBagClosure, 0);
   const totalCoinsTransferOut = dailyRows.reduce((s, r) => s + r.coinsTransferOut, 0);
 
+  // ── Manual match drag & drop (Deposita only) ──
+  type DragPayload = { bankLineId: string; remaining: number; description: string; amount: number; date: string };
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [splitDialog, setSplitDialog] = useState<{ payload: DragPayload; cashupDate: string; suggested: number } | null>(null);
+  const [splitInput, setSplitInput] = useState('');
+
+  const handleDragStart = (e: React.DragEvent, payload: DragPayload) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleRowDragOver = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDate(dateStr);
+  };
+  const handleRowDragLeave = () => setDragOverDate(null);
+
+  const persistManualMatch = async (bankLineId: string, cashupDate: string, amount: number) => {
+    const { data, error } = await supabase
+      .from('cash_recon_manual_matches')
+      .insert({ month: filterMonth, cashup_date: cashupDate, bank_line_id: bankLineId, amount, recon_kind: 'deposita' } as never)
+      .select('id, bank_line_id, cashup_date, amount')
+      .single();
+    if (error) { toast({ title: 'Match failed', description: error.message, variant: 'destructive' }); return; }
+    if (data) {
+      const row = data as ManualMatch;
+      setManualMatches(prev => [...prev, { ...row, amount: Number(row.amount) }]);
+    }
+  };
+
+  const handleRowDrop = async (e: React.DragEvent, cashupDate: string) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    try {
+      const payload: DragPayload = JSON.parse(e.dataTransfer.getData('application/json'));
+      const entry = getManagerEntryByDate(cashupDate);
+      const bagClosure = Math.abs(entry?.ccBagClosureCashConnect ?? 0);
+      const alreadyOnDate = (manualByDate.get(cashupDate) ?? []).reduce((s, m) => s + Number(m.amount), 0)
+        + (autoMatchByDate.get(cashupDate)?.amount ?? 0);
+      const remainingOnRow = Math.max(0, bagClosure - alreadyOnDate);
+      const suggested = remainingOnRow > 0 ? Math.min(payload.remaining, remainingOnRow) : payload.remaining;
+      if (Math.abs(payload.remaining - suggested) < 0.01 && remainingOnRow > 0) {
+        await persistManualMatch(payload.bankLineId, cashupDate, payload.remaining);
+        return;
+      }
+      setSplitInput(suggested.toFixed(2));
+      setSplitDialog({ payload, cashupDate, suggested });
+    } catch (err) { console.warn('Drop failed', err); }
+  };
+
+  const confirmSplit = async () => {
+    if (!splitDialog) return;
+    const amt = Number(splitInput);
+    if (!isFinite(amt) || amt <= 0) { toast({ title: 'Invalid amount', variant: 'destructive' }); return; }
+    if (amt > splitDialog.payload.remaining + 0.005) { toast({ title: 'Amount exceeds credit remaining', variant: 'destructive' }); return; }
+    await persistManualMatch(splitDialog.payload.bankLineId, splitDialog.cashupDate, amt);
+    setSplitDialog(null);
+    setSplitInput('');
+  };
+
+  const handleRemoveManualMatch = async (matchId: string) => {
+    const { error } = await supabase.from('cash_recon_manual_matches').delete().eq('id', matchId);
+    if (!error) setManualMatches(prev => prev.filter(m => m.id !== matchId));
+  };
+
+  const [unmatchedPanelPos, setUnmatchedPanelPos] = useState<{ top: number; left: number }>(() => {
+    try {
+      const saved = localStorage.getItem('cash_recon_unmatched_panel_pos');
+      if (saved) return JSON.parse(saved);
+    } catch { /* noop */ }
+    return { top: 120, left: typeof window !== 'undefined' ? window.innerWidth - 360 : 800 };
+  });
+  const panelDragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
+  const handlePanelDragStart = (e: React.MouseEvent) => {
+    panelDragRef.current = { offsetX: e.clientX - unmatchedPanelPos.left, offsetY: e.clientY - unmatchedPanelPos.top };
+    const onMove = (ev: MouseEvent) => {
+      if (!panelDragRef.current) return;
+      const top = Math.max(0, Math.min(window.innerHeight - 80, ev.clientY - panelDragRef.current.offsetY));
+      const left = Math.max(0, Math.min(window.innerWidth - 100, ev.clientX - panelDragRef.current.offsetX));
+      setUnmatchedPanelPos({ top, left });
+    };
+    const onUp = () => { panelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+  useEffect(() => {
+    try { localStorage.setItem('cash_recon_unmatched_panel_pos', JSON.stringify(unmatchedPanelPos)); } catch { /* noop */ }
+  }, [unmatchedPanelPos]);
+
   return (
     <div className="space-y-6">
       {/* Cash Connect Recon */}
