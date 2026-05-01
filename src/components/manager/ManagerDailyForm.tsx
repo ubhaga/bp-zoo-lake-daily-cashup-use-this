@@ -1118,29 +1118,30 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
         </div>
       </Section>
 
-      {/* 2.1 Banking — full width, below 2 */}
-      <Section title="2.1 Banking" color="blue">
-        <DataRow label="Charges cents per R100 (incl)">
-          <CurrencyInput
-            value={form.bankChargesRate}
-            onChange={(v) => setForm((f) => ({ ...f, bankChargesRate: v }))}
-            className="w-[120px]"
-            placeholder="37.9000"
-            decimals={4}
-          />
-        </DataRow>
-        <DataRow label="Bank Charges">
-          <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
-            <CurrencyDisplay value={bankChargesCalc} />
-          </div>
-        </DataRow>
-        <DataRow label="Banking (net deposited)">
-          <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
-            <CurrencyDisplay value={bankingCalc} />
-          </div>
-        </DataRow>
-      </Section>
-
+      {/* 2.1 Banking — full width, below 2 (hidden when CIT = Deposita) */}
+      {!isDeposita && (
+        <Section title="2.1 Banking" color="blue">
+          <DataRow label="Charges cents per R100 (incl)">
+            <CurrencyInput
+              value={form.bankChargesRate}
+              onChange={(v) => setForm((f) => ({ ...f, bankChargesRate: v }))}
+              className="w-[120px]"
+              placeholder="37.9000"
+              decimals={4}
+            />
+          </DataRow>
+          <DataRow label="Bank Charges">
+            <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
+              <CurrencyDisplay value={bankChargesCalc} />
+            </div>
+          </DataRow>
+          <DataRow label="Banking (net deposited)">
+            <div className="input-cell text-[#020508] bg-[#e4ebf2] text-right bg-muted/30 text-sm px-2 py-1 rounded min-w-[120px]">
+              <CurrencyDisplay value={bankingCalc} />
+            </div>
+          </DataRow>
+        </Section>
+      )}
       <ManualPumpReadings selectedDate={selectedDate} />
 
       {/* 3. Airtime / Lotto Commissions — only shown when relevant fields are active */}
