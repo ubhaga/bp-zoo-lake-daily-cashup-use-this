@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { extractTerminalNumber, getCanonicalSpeedpointTerminal } from '@/lib/speedpointMatching';
+import { extractTerminalNumber, getCanonicalSpeedpointTerminal, extractBatchFromDescription } from '@/lib/speedpointMatching';
 import { SourceLink } from '@/components/ui/SourceLink';
 
 import { DailySummaryReport } from './DailySummaryReport';
@@ -454,9 +454,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   bankLines.forEach((l, idx) => {
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
-    const termNum = TERMINAL_NUM_MAP[canonicalTerminal] || '';
-    const batchMatch = termNum ? l.description.match(new RegExp(`${termNum}\\s+(\\d+)`)) : null;
-    const batch = batchMatch ? batchMatch[1] : '';
+    const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
     bankParsed.push({ terminal: canonicalTerminal, batch, amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
   });
 
@@ -612,9 +610,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   prevBankLines.forEach((l, idx) => {
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
-    const termNum = TERMINAL_NUM_MAP[canonicalTerminal] || '';
-    const batchMatch = termNum ? l.description.match(new RegExp(`${termNum}\\s+(\\d+)`)) : null;
-    const batch = batchMatch ? batchMatch[1] : '';
+    const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
     prevBankParsed.push({ terminal: canonicalTerminal, batch, amount: l.amount, date: l.transaction_date, description: l.description, idx: idx + 100000, bankLineId: l.id });
   });
   const prevManuallyMatchedIds = new Set<string>();
@@ -776,43 +772,40 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     };
   }, []);
 
+  const applyManualMatch = useCallback(async (bp: BankParsedLine, targetKey: string) => {
+    const [cashupDate, terminal] = targetKey.split('|');
+
+    const existingTargetKey = Object.entries(manualMatches).find(([, lines]) => lines.some(line => line.bankLineId === bp.bankLineId))?.[0];
+    if (existingTargetKey && existingTargetKey !== targetKey) {
+      toast({ title: 'Duplicate bank line', description: 'That bank line is already manually matched to another speedpoint source.', variant: 'destructive' });
+      return;
+    }
+    if ((manualMatches[targetKey] || []).some(line => line.bankLineId === bp.bankLineId)) return;
+
+    setManualMatches(prev => ({
+      ...prev,
+      [targetKey]: [...(prev[targetKey] || []), bp],
+    }));
+    await supabase.from('speedpoint_manual_matches').insert({
+      month: filterMonth,
+      cashup_date: cashupDate,
+      terminal,
+      bank_line_idx: bp.idx,
+      bank_amount: bp.amount,
+      bank_description: bp.description,
+      bank_date: bp.date,
+      bank_terminal: bp.terminal,
+      bank_batch: bp.batch,
+      bank_line_id: bp.bankLineId,
+    } as never);
+  }, [manualMatches, filterMonth]);
+
   const handleDrop = async (e: React.DragEvent, targetKey: string) => {
     e.preventDefault();
     setDragOverTarget(null);
     try {
       const bp: BankParsedLine = JSON.parse(e.dataTransfer.getData('application/json'));
-      const [, terminal] = targetKey.split('|');
-      // Allow unmatched bank lines to be assigned to any speedpoint terminal.
-      // (Previously blocked when terminal numbers differed.)
-
-      const existingTargetKey = Object.entries(manualMatches).find(([, lines]) => lines.some(line => line.bankLineId === bp.bankLineId))?.[0];
-      if (existingTargetKey && existingTargetKey !== targetKey) {
-        toast({ title: 'Duplicate bank line', description: 'That bank line is already manually matched to another speedpoint source.', variant: 'destructive' });
-        return;
-      }
-
-      if ((manualMatches[targetKey] || []).some(line => line.bankLineId === bp.bankLineId)) {
-        return;
-      }
-
-      setManualMatches(prev => ({
-        ...prev,
-        [targetKey]: [...(prev[targetKey] || []), bp],
-      }));
-      // Save to DB
-      const [cashupDate] = targetKey.split('|');
-      await supabase.from('speedpoint_manual_matches').insert({
-        month: filterMonth,
-        cashup_date: cashupDate,
-        terminal,
-        bank_line_idx: bp.idx,
-        bank_amount: bp.amount,
-        bank_description: bp.description,
-        bank_date: bp.date,
-        bank_terminal: bp.terminal,
-        bank_batch: bp.batch,
-        bank_line_id: bp.bankLineId,
-      } as never);
+      await applyManualMatch(bp, targetKey);
     } catch {}
   };
 
@@ -1582,7 +1575,24 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                   <p className="text-xs text-muted-foreground">Drag header to move · Drag rows to match</p>
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
-                  {filteredUnmatchedTerminalLines.map((l, i) => (
+                  {filteredUnmatchedTerminalLines.map((l, i) => {
+                    // Best-match suggestion: find an unmatched cashup cell on the
+                    // same terminal whose total is closest to this bank amount.
+                    // Exact match wins; otherwise closest within R20 tolerance.
+                    let best: { date: string; terminal: string; total: number; diff: number } | null = null;
+                    speedpointByDate.forEach((r, ri) => {
+                      const td = r.terminals[l.terminal];
+                      const m = speedpointMatches[ri]?.[l.terminal];
+                      if (!td || td.total === 0 || !m || m.matched) return;
+                      // Skip if this cell already has any auto/manual amount
+                      if (m.bankAmount > 0) return;
+                      const diff = Math.abs(td.total - l.amount);
+                      if (best === null || diff < best.diff) {
+                        best = { date: r.date, terminal: l.terminal, total: td.total, diff };
+                      }
+                    });
+                    const showBest = best && (best as { diff: number }).diff <= 20;
+                    return (
                     <div
                       key={i}
                       draggable
@@ -1595,7 +1605,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">⠿</span>
-                        <span className="truncate">{l.terminal} · B{l.batch}</span>
+                        <span className="truncate">{l.terminal} · B{l.batch || '—'}</span>
                         {unmatchedAutoIds.has(l.bankLineId) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRematchAuto(l.bankLineId); }}
@@ -1606,8 +1616,22 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                           </button>
                         )}
                       </div>
+                      {showBest && best && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyManualMatch(l, `${(best as { date: string }).date}|${(best as { terminal: string }).terminal}`);
+                          }}
+                          className="text-left text-[10px] text-primary hover:underline mt-0.5"
+                          title={`Match to cashup ${(best as { date: string }).date} (cashup total ${(best as { total: number }).total.toFixed(2)}, diff ${(best as { diff: number }).diff.toFixed(2)})`}
+                        >
+                          ⇢ Best match: {format(new Date((best as { date: string }).date), 'dd/MM')} · <CurrencyDisplay value={(best as { total: number }).total} />
+                          {(best as { diff: number }).diff > 0.01 && <> (Δ <CurrencyDisplay value={(best as { diff: number }).diff} />)</>}
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                   <div className="px-3 py-2 bg-secondary font-semibold text-xs flex justify-between">
                     <span>Total</span>
                     <CurrencyDisplay value={filteredUnmatchedTerminalLines.reduce((s, l) => s + l.amount, 0)} />
