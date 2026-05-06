@@ -392,6 +392,11 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
       if (last && last.date === selectedDate && last.updatedAt === updatedAt) return;
       lastSyncedRef.current = { date: selectedDate, updatedAt };
 
+      // Don't overwrite existing user edits — only autofill when Section 7 is empty.
+      const currentAccounts = (existing?.shop.accounts ?? []);
+      const hasUserData = currentAccounts.some(a => a.name || a.amount);
+      if (hasUserData) return;
+
       // Format-aware debtors extraction. NetAcc returns one row per invoice
       // (same Account Holder may appear multiple times); Branch returns rows
       // from the EOD Debtors Transactions block.
