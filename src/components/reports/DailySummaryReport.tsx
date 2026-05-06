@@ -64,9 +64,11 @@ function computeDaySummary(c: DailyCashup) {
   const attendantShortOver = c.shop.attendantShortOver;
   const extraAttendant = (c.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const extraCustomer = (c.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+  const extraCustomerEFT = (c.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const customerToPay = c.shop.customerToPay ?? 0;
+  const customerPaidEFT = c.shop.customerPaidEFT ?? 0;
   const totalOtherAdj =
-    manualOtherAdj + returnsMop + returnsNotCaptured + attendantShortOver + customerToPay + extraAttendant + extraCustomer;
+    manualOtherAdj + returnsMop + returnsNotCaptured + attendantShortOver + customerToPay + customerPaidEFT + extraAttendant + extraCustomer + extraCustomerEFT;
 
   const shopSP = shopSPExVPlus + shopVPlus;
   const optSP = optSPExVPlus + optVPlus;
@@ -83,8 +85,10 @@ function computeDaySummary(c: DailyCashup) {
     returnsNotCaptured -
     attendantShortOver -
     customerToPay -
+    customerPaidEFT -
     extraAttendant -
-    extraCustomer;
+    extraCustomer -
+    extraCustomerEFT;
 
   const optNetSales = c.opt.income - c.opt.returns;
   const optBalance = optNetSales - optSP - optAccounts;
