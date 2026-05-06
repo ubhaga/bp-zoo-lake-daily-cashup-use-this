@@ -239,6 +239,8 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
     return d.toISOString().slice(0, 7);
   }, [filterMonth]);
 
+  const [dayEndPayoutsByDate, setDayEndPayoutsByDate] = useState<Record<string, number>>({});
+
   useEffect(() => {
     const load = async () => {
       const bankRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', filterMonth);
@@ -247,6 +249,13 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
         const prevRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', prevMonth);
         setPrevBankLines(((prevRes as any)?.data ?? []) as typeof bankLines);
       }
+      const dayEndRes = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
+      const map: Record<string, number> = {};
+      ((dayEndRes as any)?.data ?? []).forEach((row: { date: string; content: string }) => {
+        const amt = extractDayEndPayouts(row.content);
+        if (amt != null) map[row.date] = amt;
+      });
+      setDayEndPayoutsByDate(map);
     };
     load();
   }, [filterMonth, isFirstMonth, prevMonth]);
