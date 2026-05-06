@@ -365,21 +365,12 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Month header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-blue-600 text-primary-foreground hover:bg-blue-700 hover:text-primary-foreground" onClick={() => setMonthOffset(prev => prev - 1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-bold text-blue-700">{format(monthStart, "MMMM yyyy")} - Monthly Overview</h2>
-            <p className="text-sm text-muted-foreground">
-              {dataRows.length} day{dataRows.length !== 1 ? "s" : ""} captured · {greenCount} balanced
-            </p>
-          </div>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-blue-600 text-primary-foreground hover:bg-blue-700 hover:text-primary-foreground" onClick={() => setMonthOffset(prev => prev + 1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div>
+          <h2 className="text-xl font-bold text-blue-700">{format(monthStart, "MMMM yyyy")} - Monthly Overview</h2>
+          <p className="text-sm text-muted-foreground">
+            {dataRows.length} day{dataRows.length !== 1 ? "s" : ""} captured · {greenCount} balanced
+          </p>
         </div>
         <div className="text-right">
           <div className="text-xs text-muted-foreground">Month Shop Short/(Over)</div>

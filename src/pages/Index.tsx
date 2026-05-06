@@ -179,6 +179,18 @@ export default function Index() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() - 1);
+                      const next = format(d, "yyyy-MM-dd");
+                      if (next >= "2026-01-01") setSelectedDate(next);
+                    }}
+                    disabled={selectedDate <= "2026-01-01"}
+                    className="p-1 rounded-md border border-blue-600 bg-blue-600 text-primary-foreground disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
                   <span className="text-xs text-muted-foreground w-10 text-right">
                     Day {parseInt(selectedDate.slice(8, 10), 10)}
                   </span>
@@ -193,6 +205,16 @@ export default function Index() {
                     }}
                     className="w-40 accent-primary cursor-pointer"
                   />
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() + 1);
+                      setSelectedDate(format(d, "yyyy-MM-dd"));
+                    }}
+                    className="p-1 rounded-md border border-blue-600 bg-blue-600 text-primary-foreground"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             )}
@@ -266,6 +288,7 @@ export default function Index() {
           <TabsContent value="reports">
             <Reports
               mode="reports"
+              selectedDate={selectedDate}
               onNavigateToDate={(date) => {
                 setSelectedDate(date);
                 setActiveTab("manager-daily");
@@ -275,6 +298,7 @@ export default function Index() {
           <TabsContent value="recons">
             <Reports
               mode="recons"
+              selectedDate={selectedDate}
               onNavigateToDate={(date) => {
                 setSelectedDate(date);
                 setActiveTab("cashier");
@@ -292,36 +316,6 @@ export default function Index() {
                     AFS Monthly
                   </TabsTrigger>
                 </TabsList>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const d = new Date(selectedDate.slice(0, 7) + "-01");
-                      d.setMonth(d.getMonth() - 1);
-                      if (d >= new Date("2026-01-01")) setSelectedDate(format(d, "yyyy-MM") + "-01");
-                    }}
-                    className="p-1.5 rounded-md border bg-blue-600 text-primary-foreground disabled:opacity-50"
-                    disabled={selectedDate.slice(0, 7) <= "2026-01"}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <input
-                    type="month"
-                    value={selectedDate.slice(0, 7)}
-                    min="2026-01"
-                    onChange={(e) => setSelectedDate(e.target.value + "-01")}
-                    className="text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <button
-                    onClick={() => {
-                      const d = new Date(selectedDate.slice(0, 7) + "-01");
-                      d.setMonth(d.getMonth() + 1);
-                      setSelectedDate(format(d, "yyyy-MM") + "-01");
-                    }}
-                    className="p-1.5 rounded-md border bg-blue-600 text-primary-foreground"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
               <TabsContent value="jes">
                 <AfsJournalEntries
@@ -356,15 +350,6 @@ export default function Index() {
                     POS Sales Per Tank
                   </TabsTrigger>
                 </TabsList>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="month"
-                    value={selectedDate.slice(0, 7)}
-                    min="2026-01"
-                    onChange={(e) => setSelectedDate(e.target.value + "-01")}
-                    className="text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
               </div>
               <TabsContent value="fuel-dashboard">
                 <FuelDashboard selectedDate={selectedDate} />
