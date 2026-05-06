@@ -39,20 +39,22 @@ export function getCashierBalanceMetrics(
   report: DayEndReportMetrics | null | undefined,
   previousCashup?: DailyCashup,
 ) {
-  const useReportAutofill = !!report;
-  const previousReturns = Math.abs(previousCashup?.shop.returnsNotCaptured ?? 0);
-  const shopIncome = report?.shopIncome ?? cashup.shop.income;
-  const shopReturns = useReportAutofill ? previousReturns : cashup.shop.returns;
-  const returnsMop = useReportAutofill && previousReturns > 0 ? -previousReturns : cashup.shop.returns_mop;
+  // Always prefer saved cashup values; only fall back to parsed report values when the
+  // cashier hasn't entered anything yet (avoids flicker / overriding manual edits).
+  const shopIncome = cashup.shop.income || (report?.shopIncome ?? 0);
+  const shopReturns = cashup.shop.returns;
+  const returnsMop = cashup.shop.returns_mop;
   const shopNetSales = shopIncome - shopReturns - (cashup.shop.returns_today ?? 0);
-  const optIncome = report?.optIncome ?? cashup.opt.income;
+  const optIncome = cashup.opt.income || (report?.optIncome ?? 0);
   const optNetSales = optIncome - cashup.opt.returns;
 
   const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const useDayEndPayouts = dateStr >= "2026-03-01";
-  const shopPayoutsTotal = useDayEndPayouts && report?.payoutTotal != null
-    ? Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0))
-    : savedPayoutsTotal;
+  const shopPayoutsTotal = savedPayoutsTotal !== 0
+    ? savedPayoutsTotal
+    : (useDayEndPayouts && report?.payoutTotal != null
+        ? Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0))
+        : 0);
   const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
   const shopTakings = useDayEndPayouts
     ? shopNetSales - shopPayoutsTotal + shopReceipts
