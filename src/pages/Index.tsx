@@ -266,6 +266,7 @@ export default function Index() {
           <TabsContent value="reports">
             <Reports
               mode="reports"
+              selectedDate={selectedDate}
               onNavigateToDate={(date) => {
                 setSelectedDate(date);
                 setActiveTab("manager-daily");
@@ -275,6 +276,7 @@ export default function Index() {
           <TabsContent value="recons">
             <Reports
               mode="recons"
+              selectedDate={selectedDate}
               onNavigateToDate={(date) => {
                 setSelectedDate(date);
                 setActiveTab("cashier");
