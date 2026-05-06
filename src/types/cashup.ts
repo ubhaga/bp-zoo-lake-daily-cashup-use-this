@@ -71,6 +71,8 @@ export interface CashierShift {
   extraAttendantShortOvers?: NamedAdjustment[];
   extraCustomerToPays?: NamedAdjustment[];
   extraCustomerPaidEFTs?: NamedAdjustment[];
+  customerPaidEFT?: number;
+  customerPaidEFTName?: string;
 }
 
 export interface DailyCashup {
