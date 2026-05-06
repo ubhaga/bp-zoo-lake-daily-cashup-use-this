@@ -454,9 +454,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   bankLines.forEach((l, idx) => {
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
-    const termNum = TERMINAL_NUM_MAP[canonicalTerminal] || '';
-    const batchMatch = termNum ? l.description.match(new RegExp(`${termNum}\\s+(\\d+)`)) : null;
-    const batch = batchMatch ? batchMatch[1] : '';
+    const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
     bankParsed.push({ terminal: canonicalTerminal, batch, amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
   });
 
