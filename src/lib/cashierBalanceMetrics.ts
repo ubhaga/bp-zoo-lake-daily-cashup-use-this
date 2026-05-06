@@ -61,7 +61,8 @@ export function getCashierBalanceMetrics(
   const cashConnectTotal = cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins;
   const shopSP = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
   const optSP = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
-  const shopAcc = report?.shopAccountsTotal ?? cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
+  const savedShopAcc = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
+  const shopAcc = savedShopAcc !== 0 ? savedShopAcc : (report?.shopAccountsTotal ?? 0);
   const optAcc = cashup.opt.accounts.reduce((s, a) => s + a.amount, 0);
   const shopOther = cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
   const extraAttendant = (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
