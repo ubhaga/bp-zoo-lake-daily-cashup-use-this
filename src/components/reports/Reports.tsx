@@ -772,43 +772,40 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     };
   }, []);
 
+  const applyManualMatch = useCallback(async (bp: BankParsedLine, targetKey: string) => {
+    const [cashupDate, terminal] = targetKey.split('|');
+
+    const existingTargetKey = Object.entries(manualMatches).find(([, lines]) => lines.some(line => line.bankLineId === bp.bankLineId))?.[0];
+    if (existingTargetKey && existingTargetKey !== targetKey) {
+      toast({ title: 'Duplicate bank line', description: 'That bank line is already manually matched to another speedpoint source.', variant: 'destructive' });
+      return;
+    }
+    if ((manualMatches[targetKey] || []).some(line => line.bankLineId === bp.bankLineId)) return;
+
+    setManualMatches(prev => ({
+      ...prev,
+      [targetKey]: [...(prev[targetKey] || []), bp],
+    }));
+    await supabase.from('speedpoint_manual_matches').insert({
+      month: filterMonth,
+      cashup_date: cashupDate,
+      terminal,
+      bank_line_idx: bp.idx,
+      bank_amount: bp.amount,
+      bank_description: bp.description,
+      bank_date: bp.date,
+      bank_terminal: bp.terminal,
+      bank_batch: bp.batch,
+      bank_line_id: bp.bankLineId,
+    } as never);
+  }, [manualMatches, filterMonth]);
+
   const handleDrop = async (e: React.DragEvent, targetKey: string) => {
     e.preventDefault();
     setDragOverTarget(null);
     try {
       const bp: BankParsedLine = JSON.parse(e.dataTransfer.getData('application/json'));
-      const [, terminal] = targetKey.split('|');
-      // Allow unmatched bank lines to be assigned to any speedpoint terminal.
-      // (Previously blocked when terminal numbers differed.)
-
-      const existingTargetKey = Object.entries(manualMatches).find(([, lines]) => lines.some(line => line.bankLineId === bp.bankLineId))?.[0];
-      if (existingTargetKey && existingTargetKey !== targetKey) {
-        toast({ title: 'Duplicate bank line', description: 'That bank line is already manually matched to another speedpoint source.', variant: 'destructive' });
-        return;
-      }
-
-      if ((manualMatches[targetKey] || []).some(line => line.bankLineId === bp.bankLineId)) {
-        return;
-      }
-
-      setManualMatches(prev => ({
-        ...prev,
-        [targetKey]: [...(prev[targetKey] || []), bp],
-      }));
-      // Save to DB
-      const [cashupDate] = targetKey.split('|');
-      await supabase.from('speedpoint_manual_matches').insert({
-        month: filterMonth,
-        cashup_date: cashupDate,
-        terminal,
-        bank_line_idx: bp.idx,
-        bank_amount: bp.amount,
-        bank_description: bp.description,
-        bank_date: bp.date,
-        bank_terminal: bp.terminal,
-        bank_batch: bp.batch,
-        bank_line_id: bp.bankLineId,
-      } as never);
+      await applyManualMatch(bp, targetKey);
     } catch {}
   };
 
