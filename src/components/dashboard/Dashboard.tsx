@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
 import { useMasterDataStore } from '@/store/masterDataStore';
 import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { CheckCircle, XCircle, AlertCircle, CalendarDays, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { extractDayEndPayouts } from '@/lib/dayEndPayouts';
 import { MonthlyDashboard } from './MonthlyDashboard';
 
 interface Props {
