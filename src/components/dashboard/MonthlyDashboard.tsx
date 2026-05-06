@@ -6,7 +6,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonth
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBankStatementDate } from "@/lib/bankStatementDate";
-import { extractDayEndPayouts } from "@/lib/dayEndPayouts";
+import { getCashierBalanceMetrics, parseDayEndReportMetrics, type DayEndReportMetrics } from "@/lib/cashierBalanceMetrics";
 
 import type { DailyCashup, ManagerDailyEntry } from "@/types/cashup";
 
@@ -41,7 +41,8 @@ function computeDayMetrics(
   dateStr: string,
   cashup: DailyCashup | undefined,
   managerEntry: ManagerDailyEntry | undefined,
-  dayEndPayoutsByDate: Record<string, number>,
+  reportMetricsByDate: Record<string, DayEndReportMetrics>,
+  previousCashup?: DailyCashup,
 ): DayMetrics {
   if (!cashup && !managerEntry) {
     return {
@@ -64,48 +65,9 @@ function computeDayMetrics(
   let optDiff: number | null = null;
 
   if (cashup) {
-    const shopNetSales = cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0);
-    const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
-    const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
-    // Match CashierDailyForm: from 2026-03-01 onwards, payouts are the synthetic NET line
-    // (gross day-end payouts − lotto). Fall back to the freshly parsed day-end report
-    // when the saved record still has the stale 0 (cashup saved before .rpt upload).
-    const useDayEndPayouts = dateStr >= "2026-03-01";
-    const liveDayEndPayouts = dayEndPayoutsByDate[dateStr];
-    const shopPayoutsTotal = useDayEndPayouts && liveDayEndPayouts !== undefined
-      ? Math.max(0, liveDayEndPayouts - (cashup.shop.lottoPayouts ?? 0))
-      : savedPayoutsTotal;
-    const shopTakings = useDayEndPayouts
-      ? shopNetSales - shopPayoutsTotal + shopReceipts
-      : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
-    const cashConnectTotal = cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins;
-    const shopSP = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
-    const shopAcc = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
-    const shopOther = cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
-    const extraAttendant = (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
-    const extraCustomer = (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
-    const extraCustomerEFT = (cashup.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
-    const customerToPay = cashup.shop.customerToPay ?? 0;
-    const customerPaidEFT = cashup.shop.customerPaidEFT ?? 0;
-    shopDiff =
-      shopTakings -
-      cashConnectTotal -
-      shopSP -
-      shopAcc -
-      shopOther -
-      cashup.shop.returns_mop -
-      (cashup.shop.returnsNotCaptured ?? 0) -
-      cashup.shop.attendantShortOver -
-      customerToPay -
-      customerPaidEFT -
-      extraAttendant -
-      extraCustomer -
-      extraCustomerEFT;
-
-    const optNetSales = cashup.opt.income - cashup.opt.returns;
-    const optSP = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
-    const optAcc = cashup.opt.accounts.reduce((s, a) => s + a.amount, 0);
-    optDiff = optNetSales - optSP - optAcc;
+    const metrics = getCashierBalanceMetrics(cashup, dateStr, reportMetricsByDate[dateStr], previousCashup);
+    shopDiff = metrics.shopDiff;
+    optDiff = metrics.optDiff;
   }
 
   let payoutsDiff: number | null = null;
