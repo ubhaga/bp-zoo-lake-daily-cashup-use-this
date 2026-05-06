@@ -201,7 +201,7 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
     return d.toISOString().slice(0, 7);
   }, [filterMonth]);
 
-  const [dayEndPayoutsByDate, setDayEndPayoutsByDate] = useState<Record<string, number>>({});
+  const [reportMetricsByDate, setReportMetricsByDate] = useState<Record<string, DayEndReportMetrics>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -212,12 +212,12 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
         setPrevBankLines(((prevRes as any)?.data ?? []) as typeof bankLines);
       }
       const dayEndRes = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
-      const map: Record<string, number> = {};
+      const map: Record<string, DayEndReportMetrics> = {};
       ((dayEndRes as any)?.data ?? []).forEach((row: { date: string; content: string }) => {
-        const amt = extractDayEndPayouts(row.content);
-        if (amt != null) map[row.date] = amt;
+        const metrics = parseDayEndReportMetrics(row.content);
+        if (metrics) map[row.date] = metrics;
       });
-      setDayEndPayoutsByDate(map);
+      setReportMetricsByDate(map);
     };
     load();
   }, [filterMonth, isFirstMonth, prevMonth]);
@@ -279,7 +279,8 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
   const rows: DayMetrics[] = days.map((day) => {
     const ds = format(day, "yyyy-MM-dd");
-    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds), dayEndPayoutsByDate);
+    const previousDay = format(new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1), "yyyy-MM-dd");
+    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds), reportMetricsByDate, getCashupByDate(previousDay));
   });
 
   // Compute seq gaps across the month
