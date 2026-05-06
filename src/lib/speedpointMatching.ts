@@ -62,13 +62,23 @@ export function getCanonicalSpeedpointTerminal(terminal: string, knownTerminals:
  *   3. Otherwise return '' so BP Pay-style single-number lines fall through
  *      to the sum-matcher.
  */
+export function normalizeBatch(batch: string): string {
+  if (!batch) return '';
+  const trimmed = batch.trim();
+  if (!trimmed) return '';
+  // Strip leading zeros from purely numeric batches so "00168" matches "168".
+  // Preserve non-numeric batches (e.g. synthetic "BPP-..." keys, manual "X").
+  if (/^\d+$/.test(trimmed)) return String(Number(trimmed));
+  return trimmed;
+}
+
 export function extractBatchFromDescription(description: string, terminalNumber: string): string {
   if (!description) return '';
   if (terminalNumber) {
     const m = description.match(new RegExp(`${terminalNumber}\\s+(\\d+)`));
-    if (m) return m[1];
+    if (m) return normalizeBatch(m[1]);
   }
   const nums = description.match(/\d+/g) ?? [];
-  if (nums.length >= 2) return nums[nums.length - 2];
+  if (nums.length >= 2) return normalizeBatch(nums[nums.length - 2]);
   return '';
 }

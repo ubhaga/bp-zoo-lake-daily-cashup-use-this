@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { extractTerminalNumber, getCanonicalSpeedpointTerminal, extractBatchFromDescription } from '@/lib/speedpointMatching';
+import { extractTerminalNumber, getCanonicalSpeedpointTerminal, extractBatchFromDescription, normalizeBatch } from '@/lib/speedpointMatching';
 import { SourceLink } from '@/components/ui/SourceLink';
 
 import { DailySummaryReport } from './DailySummaryReport';
@@ -434,12 +434,14 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
     c.shop.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].shopAmount += sp.shopAmount;
     });
     c.opt.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].optAmount += sp.optAmount;
     });
     let rowTotal = 0;
@@ -648,12 +650,14 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
     c.shop.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].shopAmount += sp.shopAmount;
     });
     c.opt.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].optAmount += sp.optAmount;
     });
     SP_TERMINALS.forEach(t => { const v = termMap[t]; if (v) v.total = v.shopAmount + v.optAmount; });
