@@ -39,10 +39,10 @@ export function getCashierBalanceMetrics(
   report?: DayEndReportMetrics | null,
   previousCashup?: DailyCashup,
 ) {
-  // If the Cashier Daily form saved an exact Short/(Over), display that value.
-  // Older entries do not have it yet, so their fallback calculation mirrors Cashier Daily autofill.
-  const savedShopShortOver = typeof cashup.shop.shortOver === "number" ? cashup.shop.shortOver : null;
-  const savedOptShortOver = typeof cashup.opt.shortOver === "number" ? cashup.opt.shortOver : null;
+  // Always recalculate from the saved Cashier Daily inputs so Dashboard/Manager match
+  // the live Short/(Over) shown on the Cashier Daily form after uploaded data is applied.
+  // The persisted shortOver field is only a snapshot from the last save and can become stale
+  // when report/autofill parsing or editable MOP data changes.
   const shopIncome = report?.shopIncome ?? cashup.shop.income;
   const shopReturns = cashup.shop.returns;
   const returnsMop = cashup.shop.returns_mop;
@@ -104,7 +104,7 @@ export function getCashierBalanceMetrics(
     shopAcc,
     optAcc,
     shopOther,
-    shopDiff: savedShopShortOver ?? shopDiff,
-    optDiff: savedOptShortOver ?? optDiff,
+    shopDiff,
+    optDiff,
   };
 }
