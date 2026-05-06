@@ -6,6 +6,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonth
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBankStatementDate } from "@/lib/bankStatementDate";
+import { extractDayEndPayouts } from "@/lib/dayEndPayouts";
 
 import type { DailyCashup, ManagerDailyEntry } from "@/types/cashup";
 
@@ -40,6 +41,7 @@ function computeDayMetrics(
   dateStr: string,
   cashup: DailyCashup | undefined,
   managerEntry: ManagerDailyEntry | undefined,
+  dayEndPayoutsByDate: Record<string, number>,
 ): DayMetrics {
   if (!cashup && !managerEntry) {
     return {
@@ -63,11 +65,16 @@ function computeDayMetrics(
 
   if (cashup) {
     const shopNetSales = cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0);
-    const shopPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
+    const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
     const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
     // Match CashierDailyForm: from 2026-03-01 onwards, payouts are the synthetic NET line
-    // (gross day-end payouts − lotto), so lotto must NOT be subtracted again.
+    // (gross day-end payouts − lotto). Fall back to the freshly parsed day-end report
+    // when the saved record still has the stale 0 (cashup saved before .rpt upload).
     const useDayEndPayouts = dateStr >= "2026-03-01";
+    const liveDayEndPayouts = dayEndPayoutsByDate[dateStr];
+    const shopPayoutsTotal = useDayEndPayouts && liveDayEndPayouts !== undefined
+      ? Math.max(0, liveDayEndPayouts - (cashup.shop.lottoPayouts ?? 0))
+      : savedPayoutsTotal;
     const shopTakings = useDayEndPayouts
       ? shopNetSales - shopPayoutsTotal + shopReceipts
       : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
@@ -232,6 +239,8 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
     return d.toISOString().slice(0, 7);
   }, [filterMonth]);
 
+  const [dayEndPayoutsByDate, setDayEndPayoutsByDate] = useState<Record<string, number>>({});
+
   useEffect(() => {
     const load = async () => {
       const bankRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', filterMonth);
@@ -240,6 +249,13 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
         const prevRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', prevMonth);
         setPrevBankLines(((prevRes as any)?.data ?? []) as typeof bankLines);
       }
+      const dayEndRes = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
+      const map: Record<string, number> = {};
+      ((dayEndRes as any)?.data ?? []).forEach((row: { date: string; content: string }) => {
+        const amt = extractDayEndPayouts(row.content);
+        if (amt != null) map[row.date] = amt;
+      });
+      setDayEndPayoutsByDate(map);
     };
     load();
   }, [filterMonth, isFirstMonth, prevMonth]);
@@ -301,7 +317,7 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
   const rows: DayMetrics[] = days.map((day) => {
     const ds = format(day, "yyyy-MM-dd");
-    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds));
+    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds), dayEndPayoutsByDate);
   });
 
   // Compute seq gaps across the month
