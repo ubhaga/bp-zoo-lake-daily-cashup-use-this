@@ -67,9 +67,24 @@ function DailyDashboard({ selectedDate }: Props) {
   const optNetSales = cashup ? cashup.opt.income - cashup.opt.returns : 0;
   const totalNetSales = shopNetSales + optNetSales;
 
-  const shopPayoutsTotal = cashup ? cashup.shop.payouts.reduce((s, p) => s + p.amount, 0) : 0;
-  const shopReceipts = cashup ? cashup.shop.receipts.reduce((s, r) => s + r.amount, 0) : 0;
   const useDayEndPayouts = selectedDate >= "2026-03-01";
+  const [liveDayEndPayouts, setLiveDayEndPayouts] = useState<number | null>(null);
+  useEffect(() => {
+    if (!useDayEndPayouts) { setLiveDayEndPayouts(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('day_end_uploads').select('content').eq('date', selectedDate).maybeSingle();
+      if (cancelled) return;
+      setLiveDayEndPayouts(data?.content ? extractDayEndPayouts(data.content) : null);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDate, useDayEndPayouts]);
+
+  const savedPayoutsTotal = cashup ? cashup.shop.payouts.reduce((s, p) => s + p.amount, 0) : 0;
+  const shopReceipts = cashup ? cashup.shop.receipts.reduce((s, r) => s + r.amount, 0) : 0;
+  const shopPayoutsTotal = useDayEndPayouts && liveDayEndPayouts != null && cashup
+    ? Math.max(0, liveDayEndPayouts - (cashup.shop.lottoPayouts ?? 0))
+    : savedPayoutsTotal;
   const shopTakings = cashup
     ? (useDayEndPayouts
         ? shopNetSales - shopPayoutsTotal + shopReceipts
