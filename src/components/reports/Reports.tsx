@@ -936,25 +936,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
 
   return (
     <div className="space-y-4">
-      {/* Filter */}
       <div className="bg-card border rounded-lg p-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-          const d = new Date(filterMonth + '-01');
-          d.setMonth(d.getMonth() - 1);
-          if (d >= new Date('2026-01-01')) setFilterMonth(d.toISOString().slice(0, 7));
-        }} disabled={filterMonth <= '2026-01'}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <label className="text-sm font-medium text-muted-foreground">{"\n"}</label>
-        <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-          className="input-cell text-[#020508] bg-[#e4ebf2]" />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-          const d = new Date(filterMonth + '-01');
-          d.setMonth(d.getMonth() + 1);
-          setFilterMonth(d.toISOString().slice(0, 7));
-        }}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        <span className="text-sm font-medium">{monthLabel}</span>
         <span className="text-sm text-muted-foreground ml-2">
           {monthCashups.length} cashup days · {monthManagers.length} manager entries
         </span>
