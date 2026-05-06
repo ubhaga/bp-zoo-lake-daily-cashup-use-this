@@ -70,6 +70,7 @@ export interface CashierShift {
   // and is summed into Section 8 totals across the system.
   extraAttendantShortOvers?: NamedAdjustment[];
   extraCustomerToPays?: NamedAdjustment[];
+  extraCustomerPaidEFTs?: NamedAdjustment[];
 }
 
 export interface DailyCashup {
