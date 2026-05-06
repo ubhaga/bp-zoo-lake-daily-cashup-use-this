@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { extractTerminalNumber, getCanonicalSpeedpointTerminal, extractBatchFromDescription } from '@/lib/speedpointMatching';
+import { extractTerminalNumber, getCanonicalSpeedpointTerminal, extractBatchFromDescription, normalizeBatch } from '@/lib/speedpointMatching';
 import { SourceLink } from '@/components/ui/SourceLink';
 
 import { DailySummaryReport } from './DailySummaryReport';
