@@ -6,6 +6,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonth
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBankStatementDate } from "@/lib/bankStatementDate";
+import { extractDayEndPayouts } from "@/lib/dayEndPayouts";
 
 import type { DailyCashup, ManagerDailyEntry } from "@/types/cashup";
 
