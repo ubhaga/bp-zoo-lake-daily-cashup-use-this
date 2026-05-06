@@ -721,9 +721,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
 
   // Filter unmatched bank lines by the selected terminal so the side panel
   // narrows down to the terminal currently being reconciled.
-  const filteredUnmatchedTerminalLines = selectedTerminal === 'all'
+  const filteredUnmatchedTerminalLines = (selectedTerminal === 'all'
     ? unmatchedTerminalLines
-    : unmatchedTerminalLines.filter(l => l.terminal === selectedTerminal);
+    : unmatchedTerminalLines.filter(l => l.terminal === selectedTerminal)
+  ).slice().sort((a, b) => a.date.localeCompare(b.date));
 
   // Auto-scroll during drag
   const scrollIntervalRef = useRef<number | null>(null);
