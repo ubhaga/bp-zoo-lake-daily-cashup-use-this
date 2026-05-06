@@ -67,7 +67,12 @@ function DailyDashboard({ selectedDate }: Props) {
 
   const shopPayoutsTotal = cashup ? cashup.shop.payouts.reduce((s, p) => s + p.amount, 0) : 0;
   const shopReceipts = cashup ? cashup.shop.receipts.reduce((s, r) => s + r.amount, 0) : 0;
-  const shopTakings = cashup ? shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts : 0;
+  const useDayEndPayouts = selectedDate >= "2026-03-01";
+  const shopTakings = cashup
+    ? (useDayEndPayouts
+        ? shopNetSales - shopPayoutsTotal + shopReceipts
+        : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts)
+    : 0;
 
   const shopSP = cashup ? cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0) : 0;
   const optSP = cashup ? cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0) : 0;
