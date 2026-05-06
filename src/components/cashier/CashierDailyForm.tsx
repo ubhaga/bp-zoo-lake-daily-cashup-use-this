@@ -450,16 +450,20 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
   const shopOtherTotal = form.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
   const customerToPay = form.shop.customerToPay ?? 0;
+  const customerPaidEFT = form.shop.customerPaidEFT ?? 0;
   const extraAttendantTotal = (form.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const extraCustomerTotal = (form.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+  const extraCustomerEFTTotal = (form.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const shopSection8Total =
     shopOtherTotal +
     form.shop.returns_mop +
     form.shop.returnsNotCaptured +
     form.shop.attendantShortOver +
     customerToPay +
+    customerPaidEFT +
     extraAttendantTotal +
-    extraCustomerTotal;
+    extraCustomerTotal +
+    extraCustomerEFTTotal;
 
   const cashConnectTotal = form.shop.cashDepositedBanking + form.shop.easyPay + form.shop.coins;
 
@@ -474,8 +478,10 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     form.shop.returnsNotCaptured -
     form.shop.attendantShortOver -
     customerToPay -
+    customerPaidEFT -
     extraAttendantTotal -
-    extraCustomerTotal;
+    extraCustomerTotal -
+    extraCustomerEFTTotal;
   // OPT balance = OPT Takings - OPT Speedpoints - OPT Accounts
   const optDifference = optTotalTakings - optSpeedpointTotal - optAccountTotal;
 
