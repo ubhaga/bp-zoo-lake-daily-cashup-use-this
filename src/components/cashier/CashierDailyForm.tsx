@@ -81,8 +81,11 @@ const blankShopShift = (terminals: string[]): DailyCashup["shop"] => ({
   attendantName: '',
   customerToPay: 0,
   customerName: '',
+  customerPaidEFT: 0,
+  customerPaidEFTName: '',
   extraAttendantShortOvers: [],
   extraCustomerToPays: [],
+  extraCustomerPaidEFTs: [],
 });
 
 const blankOptShift = (terminals: string[]): DailyCashup["opt"] => ({
