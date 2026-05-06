@@ -484,18 +484,23 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
   if (bpPayTerminal) {
     const claimedDates = new Set<string>();
+    // Sort bank lines chronologically using parsed date (handles M/D/YYYY etc.)
     const bpBankLines = bankParsed
       .filter(bp => bp.terminal === bpPayTerminal && !bp.batch)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    // Cashup days that have a non-zero BP pay total, sorted ascending
+      .slice()
+      .sort((a, b) => parseBankReconDate(a.date) - parseBankReconDate(b.date));
+    // Cashup days (ISO YYYY-MM-DD) with non-zero BP pay total, ascending
     const bpCashupDays = speedpointByDate
       .filter(r => (r.terminals[bpPayTerminal]?.total ?? 0) > 0.005)
       .map(r => r.date)
       .sort();
     for (const bp of bpBankLines) {
+      const bpTs = parseBankReconDate(bp.date);
       // Candidate cashup days strictly before the bank date, not yet claimed,
-      // most recent first (we walk back from bank date)
-      const candidates = bpCashupDays.filter(d => d < bp.date && !claimedDates.has(d)).reverse();
+      // most recent first (walk back from bank date)
+      const candidates = bpCashupDays
+        .filter(d => parseBankReconDate(d) < bpTs && !claimedDates.has(d))
+        .reverse();
       let chosen: string[] | null = null;
       // Try group sizes 1..4 (contiguous from most-recent backwards)
       for (let size = 1; size <= 4 && size <= candidates.length; size++) {
@@ -507,7 +512,6 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
         if (Math.abs(sum - bp.amount) < 0.01) { chosen = group; break; }
       }
       if (!chosen) continue;
-      // Stamp synthetic batch on bank line and on each cashup-day row
       const synthBatch = `BPP-${bp.bankLineId.slice(0, 8)}`;
       bp.batch = synthBatch;
       chosen.forEach(d => {
