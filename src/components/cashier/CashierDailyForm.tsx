@@ -494,8 +494,17 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     // When the second shift is hidden (NetAcc by default) we exclude OPT data
     // from the saved record by replacing it with a blank shift and zero shift #.
     const toSave = showSecondShift
-      ? form
-      : { ...form, optShiftNumber: 0, opt: blankOptShift(optTerminalNames) };
+      ? {
+          ...form,
+          shop: { ...form.shop, shortOver: shopDifference },
+          opt: { ...form.opt, shortOver: optDifference },
+        }
+      : {
+          ...form,
+          shop: { ...form.shop, shortOver: shopDifference },
+          optShiftNumber: 0,
+          opt: { ...blankOptShift(optTerminalNames), shortOver: 0 },
+        };
     if (existing) updateCashup(existing.id, toSave);
     else addCashup(toSave);
     const now = format(new Date(), "dd MMM yyyy, HH:mm:ss");
