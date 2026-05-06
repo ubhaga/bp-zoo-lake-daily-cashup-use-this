@@ -599,6 +599,7 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         variant: "destructive",
       });
       return;
+    }
     // --- Customer Paid EFT name mandatory if amount non-zero ---
     if ((form.shop.customerPaidEFT ?? 0) !== 0 && !(form.shop.customerPaidEFTName ?? '').trim()) {
       toast({
