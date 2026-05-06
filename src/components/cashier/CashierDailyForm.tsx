@@ -1350,6 +1350,54 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
             </div>
           </div>
         ))}
+        <div className="flex items-center justify-between px-3 py-1.5 border-b text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Customer Paid EFT</span>
+            {(form.shop.customerPaidEFT ?? 0) !== 0 && (
+              <input
+                value={form.shop.customerPaidEFTName ?? ''}
+                onChange={(e) => setShop({ customerPaidEFTName: e.target.value })}
+                placeholder="Customer name"
+                className="input-cell text-[#020508] bg-[#e4ebf2] h-7 text-xs w-44 text-left"
+              />
+            )}
+          </div>
+          <CurrencyInput
+            value={form.shop.customerPaidEFT ?? 0}
+            onChange={(v) => setShop({ customerPaidEFT: v })}
+            allowNegative
+          />
+        </div>
+        {(form.shop.extraCustomerPaidEFTs ?? []).map((row) => (
+          <div key={row.id} className="flex items-center justify-between px-3 py-1.5 border-b text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Customer Paid EFT</span>
+              {row.amount !== 0 && (
+                <input
+                  value={row.name}
+                  onChange={(e) => updateExtraCustomerEFT(row.id, { name: e.target.value })}
+                  placeholder="Customer name"
+                  className="input-cell text-[#020508] bg-[#e4ebf2] h-7 text-xs w-44 text-left"
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <CurrencyInput
+                value={row.amount}
+                onChange={(v) => updateExtraCustomerEFT(row.id, { amount: v })}
+                allowNegative
+              />
+              <button
+                type="button"
+                onClick={() => removeExtraCustomerEFT(row.id)}
+                className="p-1 text-muted-foreground hover:text-destructive"
+                aria-label="Remove row"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        ))}
         <div className="px-3 py-1.5 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={addOther} className="text-xs h-7">
             <Plus className="h-3 w-3 mr-1" />
@@ -1362,6 +1410,10 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
           <Button variant="outline" size="sm" onClick={addCustomerToPay} className="text-xs h-7">
             <Plus className="h-3 w-3 mr-1" />
             Add Customer to Pay/(Paid)
+          </Button>
+          <Button variant="outline" size="sm" onClick={addCustomerPaidEFT} className="text-xs h-7">
+            <Plus className="h-3 w-3 mr-1" />
+            Add Customer Paid EFT
           </Button>
         </div>
         <div className="flex items-center justify-between px-3 py-2 bg-secondary font-semibold text-sm border-t">
