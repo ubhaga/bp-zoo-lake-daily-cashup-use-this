@@ -20,6 +20,21 @@ import { CashRecon } from '@/components/recons/CashRecon';
 import { OtherAdjustmentsRecon } from '@/components/recons/OtherAdjustmentsRecon';
 import { DebtorsRecon } from '@/components/recons/DebtorsRecon';
 
+const parseBankReconDate = (dateStr: string): number => {
+  if (!dateStr) return Number.MAX_SAFE_INTEGER;
+
+  const iso = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+
+  const mdy = dateStr.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/);
+  if (mdy) {
+    const year = Number(mdy[3]) < 100 ? 2000 + Number(mdy[3]) : Number(mdy[3]);
+    return Date.UTC(year, Number(mdy[1]) - 1, Number(mdy[2]));
+  }
+
+  return Number.MAX_SAFE_INTEGER;
+};
+
 export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { mode?: 'reports' | 'recons'; onNavigateToDate?: (date: string) => void; selectedDate?: string }) {
   const { cashups, managerEntries } = useCashupStore();
   const { speedpointTerminals, cashInTransit } = useMasterDataStore();
@@ -724,7 +739,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   const filteredUnmatchedTerminalLines = (selectedTerminal === 'all'
     ? unmatchedTerminalLines
     : unmatchedTerminalLines.filter(l => l.terminal === selectedTerminal)
-  ).slice().sort((a, b) => a.date.localeCompare(b.date));
+  ).slice().sort((a, b) => parseBankReconDate(a.date) - parseBankReconDate(b.date));
 
   // Auto-scroll during drag
   const scrollIntervalRef = useRef<number | null>(null);
