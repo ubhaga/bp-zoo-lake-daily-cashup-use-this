@@ -20,10 +20,10 @@ import { CashRecon } from '@/components/recons/CashRecon';
 import { OtherAdjustmentsRecon } from '@/components/recons/OtherAdjustmentsRecon';
 import { DebtorsRecon } from '@/components/recons/DebtorsRecon';
 
-export function Reports({ mode = 'reports', onNavigateToDate }: { mode?: 'reports' | 'recons'; onNavigateToDate?: (date: string) => void }) {
+export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { mode?: 'reports' | 'recons'; onNavigateToDate?: (date: string) => void; selectedDate?: string }) {
   const { cashups, managerEntries } = useCashupStore();
   const { speedpointTerminals, cashInTransit } = useMasterDataStore();
-  const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const filterMonth = (selectedDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7);
 
   const monthCashups = cashups.filter(c => c.month === filterMonth);
   const monthManagers = managerEntries.filter(e => e.date.startsWith(filterMonth));
