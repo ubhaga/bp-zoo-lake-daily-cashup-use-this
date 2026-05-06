@@ -36,25 +36,21 @@ export function parseDayEndReportMetrics(content: string | null | undefined): Da
 export function getCashierBalanceMetrics(
   cashup: DailyCashup,
   dateStr: string,
-  report: DayEndReportMetrics | null | undefined,
+  _report?: DayEndReportMetrics | null,
   previousCashup?: DailyCashup,
 ) {
-  // Always prefer saved cashup values; only fall back to parsed report values when the
-  // cashier hasn't entered anything yet (avoids flicker / overriding manual edits).
-  const shopIncome = cashup.shop.income || (report?.shopIncome ?? 0);
+  // Dashboard balances must match the saved Cashier Daily form exactly.
+  // Do not fall back to uploaded report values here, even when a saved value is 0.
+  const shopIncome = cashup.shop.income;
   const shopReturns = cashup.shop.returns;
   const returnsMop = cashup.shop.returns_mop;
   const shopNetSales = shopIncome - shopReturns - (cashup.shop.returns_today ?? 0);
-  const optIncome = cashup.opt.income || (report?.optIncome ?? 0);
+  const optIncome = cashup.opt.income;
   const optNetSales = optIncome - cashup.opt.returns;
 
   const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const useDayEndPayouts = dateStr >= "2026-03-01";
-  const shopPayoutsTotal = savedPayoutsTotal !== 0
-    ? savedPayoutsTotal
-    : (useDayEndPayouts && report?.payoutTotal != null
-        ? Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0))
-        : 0);
+  const shopPayoutsTotal = savedPayoutsTotal;
   const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
   const shopTakings = useDayEndPayouts
     ? shopNetSales - shopPayoutsTotal + shopReceipts
@@ -64,7 +60,7 @@ export function getCashierBalanceMetrics(
   const shopSP = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
   const optSP = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
   const savedShopAcc = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
-  const shopAcc = savedShopAcc !== 0 ? savedShopAcc : (report?.shopAccountsTotal ?? 0);
+  const shopAcc = savedShopAcc;
   const optAcc = cashup.opt.accounts.reduce((s, a) => s + a.amount, 0);
   const shopOther = cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
   const extraAttendant = (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
