@@ -65,7 +65,12 @@ function computeDayMetrics(
     const shopNetSales = cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0);
     const shopPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
     const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
-    const shopTakings = shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
+    // Match CashierDailyForm: from 2026-03-01 onwards, payouts are the synthetic NET line
+    // (gross day-end payouts − lotto), so lotto must NOT be subtracted again.
+    const useDayEndPayouts = dateStr >= "2026-03-01";
+    const shopTakings = useDayEndPayouts
+      ? shopNetSales - shopPayoutsTotal + shopReceipts
+      : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
     const cashConnectTotal = cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins;
     const shopSP = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
     const shopAcc = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
@@ -510,7 +515,7 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                         className="w-full min-h-[28px] text-xs rounded-md border border-input bg-background px-2 py-1 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         rows={1}
                         placeholder={allOk ? "" : "Explain variance..."}
-                        value={editingExplanations[row.date] ?? (getManagerEntryByDate(row.date)?.explanations || "")}
+                        value={editingExplanations[row.date] ?? (getManagerEntryByDate(row.date)?.explanations || getCashupByDate(row.date)?.notes || "")}
                         onChange={(e) => {
                           handleExplanationChange(row.date, e.target.value);
                           e.target.style.height = 'auto';
