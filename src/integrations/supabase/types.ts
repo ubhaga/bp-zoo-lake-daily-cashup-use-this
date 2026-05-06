@@ -544,6 +544,36 @@ export type Database = {
         }
         Relationships: []
       }
+      other_adj_bank_clearances: {
+        Row: {
+          adjustment_id: string
+          amount: number
+          bank_line_id: string
+          cashup_date: string
+          created_at: string
+          id: string
+          month: string
+        }
+        Insert: {
+          adjustment_id: string
+          amount?: number
+          bank_line_id: string
+          cashup_date: string
+          created_at?: string
+          id?: string
+          month: string
+        }
+        Update: {
+          adjustment_id?: string
+          amount?: number
+          bank_line_id?: string
+          cashup_date?: string
+          created_at?: string
+          id?: string
+          month?: string
+        }
+        Relationships: []
+      }
       other_adjustment_categories: {
         Row: {
           adjustment_id: string
