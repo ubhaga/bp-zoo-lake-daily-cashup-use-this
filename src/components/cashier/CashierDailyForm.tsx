@@ -81,8 +81,11 @@ const blankShopShift = (terminals: string[]): DailyCashup["shop"] => ({
   attendantName: '',
   customerToPay: 0,
   customerName: '',
+  customerPaidEFT: 0,
+  customerPaidEFTName: '',
   extraAttendantShortOvers: [],
   extraCustomerToPays: [],
+  extraCustomerPaidEFTs: [],
 });
 
 const blankOptShift = (terminals: string[]): DailyCashup["opt"] => ({
@@ -447,16 +450,20 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
 
   const shopOtherTotal = form.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
   const customerToPay = form.shop.customerToPay ?? 0;
+  const customerPaidEFT = form.shop.customerPaidEFT ?? 0;
   const extraAttendantTotal = (form.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const extraCustomerTotal = (form.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+  const extraCustomerEFTTotal = (form.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
   const shopSection8Total =
     shopOtherTotal +
     form.shop.returns_mop +
     form.shop.returnsNotCaptured +
     form.shop.attendantShortOver +
     customerToPay +
+    customerPaidEFT +
     extraAttendantTotal +
-    extraCustomerTotal;
+    extraCustomerTotal +
+    extraCustomerEFTTotal;
 
   const cashConnectTotal = form.shop.cashDepositedBanking + form.shop.easyPay + form.shop.coins;
 
@@ -471,8 +478,10 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     form.shop.returnsNotCaptured -
     form.shop.attendantShortOver -
     customerToPay -
+    customerPaidEFT -
     extraAttendantTotal -
-    extraCustomerTotal;
+    extraCustomerTotal -
+    extraCustomerEFTTotal;
   // OPT balance = OPT Takings - OPT Speedpoints - OPT Accounts
   const optDifference = optTotalTakings - optSpeedpointTotal - optAccountTotal;
 
@@ -591,6 +600,27 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
       });
       return;
     }
+    // --- Customer Paid EFT name mandatory if amount non-zero ---
+    if ((form.shop.customerPaidEFT ?? 0) !== 0 && !(form.shop.customerPaidEFTName ?? '').trim()) {
+      toast({
+        title: "Customer Name required",
+        description: "Please enter the customer name when Customer Paid EFT is entered.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // --- Extra Customer Paid EFT rows: name required if amount non-zero ---
+    const badExtraCustomerEFT = (form.shop.extraCustomerPaidEFTs ?? []).filter(
+      (r) => r.amount !== 0 && !r.name.trim(),
+    );
+    if (badExtraCustomerEFT.length > 0) {
+      toast({
+        title: "Customer Name required",
+        description: "Please enter a customer name for every extra Customer Paid EFT row with an amount.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // --- Over (negative balance) confirmation ---
     const shopOver = shopDifference < -0.01;
@@ -671,6 +701,23 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const removeExtraCustomer = (id: string) =>
     setShop({
       extraCustomerToPays: (form.shop.extraCustomerToPays ?? []).filter((r) => r.id !== id),
+    });
+  const addCustomerPaidEFT = () =>
+    setShop({
+      extraCustomerPaidEFTs: [
+        ...(form.shop.extraCustomerPaidEFTs ?? []),
+        { id: uuidv4(), name: "", amount: 0 },
+      ],
+    });
+  const updateExtraCustomerEFT = (id: string, patch: Partial<NamedAdjustment>) =>
+    setShop({
+      extraCustomerPaidEFTs: (form.shop.extraCustomerPaidEFTs ?? []).map((r) =>
+        r.id === id ? { ...r, ...patch } : r,
+      ),
+    });
+  const removeExtraCustomerEFT = (id: string) =>
+    setShop({
+      extraCustomerPaidEFTs: (form.shop.extraCustomerPaidEFTs ?? []).filter((r) => r.id !== id),
     });
   const removeOther = (id: string) =>
     setShop({ otherAdjustments: form.shop.otherAdjustments.filter((o) => o.id !== id) });
@@ -1303,6 +1350,54 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
             </div>
           </div>
         ))}
+        <div className="flex items-center justify-between px-3 py-1.5 border-b text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Customer Paid EFT</span>
+            {(form.shop.customerPaidEFT ?? 0) !== 0 && (
+              <input
+                value={form.shop.customerPaidEFTName ?? ''}
+                onChange={(e) => setShop({ customerPaidEFTName: e.target.value })}
+                placeholder="Customer name"
+                className="input-cell text-[#020508] bg-[#e4ebf2] h-7 text-xs w-44 text-left"
+              />
+            )}
+          </div>
+          <CurrencyInput
+            value={form.shop.customerPaidEFT ?? 0}
+            onChange={(v) => setShop({ customerPaidEFT: v })}
+            allowNegative
+          />
+        </div>
+        {(form.shop.extraCustomerPaidEFTs ?? []).map((row) => (
+          <div key={row.id} className="flex items-center justify-between px-3 py-1.5 border-b text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Customer Paid EFT</span>
+              {row.amount !== 0 && (
+                <input
+                  value={row.name}
+                  onChange={(e) => updateExtraCustomerEFT(row.id, { name: e.target.value })}
+                  placeholder="Customer name"
+                  className="input-cell text-[#020508] bg-[#e4ebf2] h-7 text-xs w-44 text-left"
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <CurrencyInput
+                value={row.amount}
+                onChange={(v) => updateExtraCustomerEFT(row.id, { amount: v })}
+                allowNegative
+              />
+              <button
+                type="button"
+                onClick={() => removeExtraCustomerEFT(row.id)}
+                className="p-1 text-muted-foreground hover:text-destructive"
+                aria-label="Remove row"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        ))}
         <div className="px-3 py-1.5 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={addOther} className="text-xs h-7">
             <Plus className="h-3 w-3 mr-1" />
@@ -1315,6 +1410,10 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
           <Button variant="outline" size="sm" onClick={addCustomerToPay} className="text-xs h-7">
             <Plus className="h-3 w-3 mr-1" />
             Add Customer to Pay/(Paid)
+          </Button>
+          <Button variant="outline" size="sm" onClick={addCustomerPaidEFT} className="text-xs h-7">
+            <Plus className="h-3 w-3 mr-1" />
+            Add Customer Paid EFT
           </Button>
         </div>
         <div className="flex items-center justify-between px-3 py-2 bg-secondary font-semibold text-sm border-t">

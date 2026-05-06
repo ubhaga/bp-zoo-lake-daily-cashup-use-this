@@ -103,14 +103,17 @@ export function AfsJournalEntries({ selectedDate, onNavigateToDate }: AfsJournal
       const otherAdj = (c.shop.otherAdjustments ?? []).reduce((s, o) => s + o.amount, 0);
       const extraAttendant = (c.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
       const extraCustomer = (c.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+      const extraCustomerEFT = (c.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
       const section8Total =
         otherAdj +
         (c.shop.returns_mop ?? 0) +
         (c.shop.returnsNotCaptured ?? 0) +
         (c.shop.attendantShortOver ?? 0) +
         (c.shop.customerToPay ?? 0) +
+        (c.shop.customerPaidEFT ?? 0) +
         extraAttendant +
-        extraCustomer;
+        extraCustomer +
+        extraCustomerEFT;
       totalOtherAdjustments += section8Total;
       // Cashier balance (shop + opt short/over)
       const shopNetSales = (c.shop.income ?? 0) - (c.shop.returns ?? 0) - (c.shop.returns_today ?? 0);

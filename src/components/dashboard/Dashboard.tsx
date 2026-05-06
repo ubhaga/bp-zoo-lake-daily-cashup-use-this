@@ -77,8 +77,10 @@ function DailyDashboard({ selectedDate }: Props) {
 
   const cashConnectTotal = cashup ? cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins : 0;
   const customerToPayShop = cashup ? (cashup.shop.customerToPay ?? 0) : 0;
+  const customerPaidEFTShop = cashup ? (cashup.shop.customerPaidEFT ?? 0) : 0;
   const extraAttendantShop = cashup ? (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
   const extraCustomerShop = cashup ? (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
+  const extraCustomerEFTShop = cashup ? (cashup.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
   const shopDiff = cashup
     ? shopTakings -
       cashConnectTotal -
@@ -89,8 +91,10 @@ function DailyDashboard({ selectedDate }: Props) {
       (cashup.shop.returnsNotCaptured ?? 0) -
       cashup.shop.attendantShortOver -
       customerToPayShop -
+      customerPaidEFTShop -
       extraAttendantShop -
-      extraCustomerShop
+      extraCustomerShop -
+      extraCustomerEFTShop
     : 0;
   const optMopTotal = optSP + optAcc;
   const optDiff = optNetSales - optMopTotal;

@@ -10,7 +10,12 @@ export function sumExtraCustomerToPay(shop: DailyCashup["shop"]): number {
   return (shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
 }
 
+/** Sum of additional Customer Paid EFT rows added via the "+ Add Customer Paid EFT" button. */
+export function sumExtraCustomerPaidEFT(shop: DailyCashup["shop"]): number {
+  return (shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+}
+
 /** Combined sum of all extra Section 8 named rows. */
 export function sumExtraSection8(shop: DailyCashup["shop"]): number {
-  return sumExtraAttendantShortOver(shop) + sumExtraCustomerToPay(shop);
+  return sumExtraAttendantShortOver(shop) + sumExtraCustomerToPay(shop) + sumExtraCustomerPaidEFT(shop);
 }

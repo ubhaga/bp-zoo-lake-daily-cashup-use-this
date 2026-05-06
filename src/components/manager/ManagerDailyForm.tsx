@@ -746,8 +746,10 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
           (cashup.shop.returnsNotCaptured ?? 0) -
           (cashup.shop.attendantShortOver ?? 0) -
           (cashup.shop.customerToPay ?? 0) -
+          (cashup.shop.customerPaidEFT ?? 0) -
           (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0) -
-          (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+          (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0) -
+          (cashup.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
 
         const optNetSales = cashup.opt.income - cashup.opt.returns;
         const optSpeedpointTotal = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
