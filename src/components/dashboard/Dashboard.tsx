@@ -76,50 +76,22 @@ function DailyDashboard({ selectedDate }: Props) {
     );
   }
 
-  const shopNetSales = cashup ? cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0) : 0;
-  const optNetSales = cashup ? cashup.opt.income - cashup.opt.returns : 0;
-  const totalNetSales = shopNetSales + optNetSales;
-
-  const savedPayoutsTotal = cashup ? cashup.shop.payouts.reduce((s, p) => s + p.amount, 0) : 0;
-  const shopReceipts = cashup ? cashup.shop.receipts.reduce((s, r) => s + r.amount, 0) : 0;
-  const shopPayoutsTotal = useDayEndPayouts && liveDayEndPayouts != null && cashup
-    ? Math.max(0, liveDayEndPayouts - (cashup.shop.lottoPayouts ?? 0))
-    : savedPayoutsTotal;
-  const shopTakings = cashup
-    ? (useDayEndPayouts
-        ? shopNetSales - shopPayoutsTotal + shopReceipts
-        : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts)
-    : 0;
-
-  const shopSP = cashup ? cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0) : 0;
-  const optSP = cashup ? cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0) : 0;
-  const shopAcc = cashup ? cashup.shop.accounts.reduce((s, a) => s + a.amount, 0) : 0;
-  const optAcc = cashup ? cashup.opt.accounts.reduce((s, a) => s + a.amount, 0) : 0;
-  const shopOther = cashup ? cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0) : 0;
-
-  const cashConnectTotal = cashup ? cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins : 0;
-  const customerToPayShop = cashup ? (cashup.shop.customerToPay ?? 0) : 0;
-  const customerPaidEFTShop = cashup ? (cashup.shop.customerPaidEFT ?? 0) : 0;
-  const extraAttendantShop = cashup ? (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
-  const extraCustomerShop = cashup ? (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
-  const extraCustomerEFTShop = cashup ? (cashup.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0) : 0;
-  const shopDiff = cashup
-    ? shopTakings -
-      cashConnectTotal -
-      shopSP -
-      shopAcc -
-      shopOther -
-      cashup.shop.returns_mop -
-      (cashup.shop.returnsNotCaptured ?? 0) -
-      cashup.shop.attendantShortOver -
-      customerToPayShop -
-      customerPaidEFTShop -
-      extraAttendantShop -
-      extraCustomerShop -
-      extraCustomerEFTShop
-    : 0;
-  const optMopTotal = optSP + optAcc;
-  const optDiff = optNetSales - optMopTotal;
+  const selected = new Date(selectedDate);
+  const previousDate = format(new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() - 1), 'yyyy-MM-dd');
+  const metrics = cashup
+    ? getCashierBalanceMetrics(cashup, selectedDate, reportMetrics, getCashupByDate(previousDate))
+    : null;
+  const shopNetSales = metrics?.shopNetSales ?? 0;
+  const optNetSales = metrics?.optNetSales ?? 0;
+  const totalNetSales = metrics?.totalNetSales ?? 0;
+  const shopPayoutsTotal = metrics?.shopPayoutsTotal ?? 0;
+  const shopReceipts = metrics?.shopReceipts ?? 0;
+  const shopTakings = metrics?.shopTakings ?? 0;
+  const shopSP = metrics?.shopSP ?? 0;
+  const optSP = metrics?.optSP ?? 0;
+  const cashConnectTotal = metrics?.cashConnectTotal ?? 0;
+  const shopDiff = metrics?.shopDiff ?? 0;
+  const optDiff = metrics?.optDiff ?? 0;
 
   const invTotal = managerEntry
     ? managerEntry.payoutInvoices.reduce((s, i) => s + i.inclusive, 0) + managerEntry.eftInvoices.reduce((s, i) => s + i.inclusive, 0)
