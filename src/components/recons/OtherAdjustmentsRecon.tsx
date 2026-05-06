@@ -129,6 +129,21 @@ export function OtherAdjustmentsRecon({ filterMonth, onNavigateToDate }: Props) 
         });
       }
 
+      // Include base Customer Paid EFT as a line item
+      const baseCustomerEFT = c.shop.customerPaidEFT ?? 0;
+      if (Math.abs(baseCustomerEFT) >= 0.01) {
+        const ekey = `${c.date}|__customer_paid_eft__`;
+        const eName = (c.shop.customerPaidEFTName ?? '').trim();
+        allLines.push({
+          date: c.date,
+          adjustmentId: '__customer_paid_eft__',
+          explanation: eName ? `Customer Paid EFT — ${eName}` : 'Customer Paid EFT',
+          amount: baseCustomerEFT,
+          category: savedCategories[ekey] || '',
+          isNetted: false,
+        });
+      }
+
       // Include extra Attendant Short/(Over) rows as line items
       (c.shop.extraAttendantShortOvers ?? []).forEach((row) => {
         if (Math.abs(row.amount) < 0.01) return;
@@ -151,6 +166,20 @@ export function OtherAdjustmentsRecon({ filterMonth, onNavigateToDate }: Props) 
           date: c.date,
           adjustmentId: row.id,
           explanation: row.name ? `Customer to Pay/(Paid) — ${row.name}` : 'Customer to Pay/(Paid)',
+          amount: row.amount,
+          category: savedCategories[key] || '',
+          isNetted: false,
+        });
+      });
+
+      // Include extra Customer Paid EFT rows as line items
+      (c.shop.extraCustomerPaidEFTs ?? []).forEach((row) => {
+        if (Math.abs(row.amount) < 0.01) return;
+        const key = `${c.date}|${row.id}`;
+        allLines.push({
+          date: c.date,
+          adjustmentId: row.id,
+          explanation: row.name ? `Customer Paid EFT — ${row.name}` : 'Customer Paid EFT',
           amount: row.amount,
           category: savedCategories[key] || '',
           isNetted: false,
