@@ -65,11 +65,16 @@ function computeDayMetrics(
 
   if (cashup) {
     const shopNetSales = cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0);
-    const shopPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
+    const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
     const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
     // Match CashierDailyForm: from 2026-03-01 onwards, payouts are the synthetic NET line
-    // (gross day-end payouts − lotto), so lotto must NOT be subtracted again.
+    // (gross day-end payouts − lotto). Fall back to the freshly parsed day-end report
+    // when the saved record still has the stale 0 (cashup saved before .rpt upload).
     const useDayEndPayouts = dateStr >= "2026-03-01";
+    const liveDayEndPayouts = dayEndPayoutsByDate[dateStr];
+    const shopPayoutsTotal = useDayEndPayouts && liveDayEndPayouts !== undefined
+      ? Math.max(0, liveDayEndPayouts - (cashup.shop.lottoPayouts ?? 0))
+      : savedPayoutsTotal;
     const shopTakings = useDayEndPayouts
       ? shopNetSales - shopPayoutsTotal + shopReceipts
       : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
