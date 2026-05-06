@@ -599,6 +599,26 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
         variant: "destructive",
       });
       return;
+    // --- Customer Paid EFT name mandatory if amount non-zero ---
+    if ((form.shop.customerPaidEFT ?? 0) !== 0 && !(form.shop.customerPaidEFTName ?? '').trim()) {
+      toast({
+        title: "Customer Name required",
+        description: "Please enter the customer name when Customer Paid EFT is entered.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // --- Extra Customer Paid EFT rows: name required if amount non-zero ---
+    const badExtraCustomerEFT = (form.shop.extraCustomerPaidEFTs ?? []).filter(
+      (r) => r.amount !== 0 && !r.name.trim(),
+    );
+    if (badExtraCustomerEFT.length > 0) {
+      toast({
+        title: "Customer Name required",
+        description: "Please enter a customer name for every extra Customer Paid EFT row with an amount.",
+        variant: "destructive",
+      });
+      return;
     }
 
     // --- Over (negative balance) confirmation ---
