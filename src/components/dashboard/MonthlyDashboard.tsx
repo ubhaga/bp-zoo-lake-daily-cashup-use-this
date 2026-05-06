@@ -515,7 +515,7 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                         className="w-full min-h-[28px] text-xs rounded-md border border-input bg-background px-2 py-1 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         rows={1}
                         placeholder={allOk ? "" : "Explain variance..."}
-                        value={editingExplanations[row.date] ?? (getManagerEntryByDate(row.date)?.explanations || "")}
+                        value={editingExplanations[row.date] ?? (getManagerEntryByDate(row.date)?.explanations || getCashupByDate(row.date)?.notes || "")}
                         onChange={(e) => {
                           handleExplanationChange(row.date, e.target.value);
                           e.target.style.height = 'auto';
