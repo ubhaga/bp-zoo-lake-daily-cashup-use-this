@@ -434,12 +434,14 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
     c.shop.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].shopAmount += sp.shopAmount;
     });
     c.opt.speedpoints.forEach(sp => {
       if (!termMap[sp.terminal]) termMap[sp.terminal] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 };
-      termMap[sp.terminal].batchNo = sp.batchNo || termMap[sp.terminal].batchNo;
+      const nb = normalizeBatch(sp.batchNo);
+      if (nb) termMap[sp.terminal].batchNo = nb;
       termMap[sp.terminal].optAmount += sp.optAmount;
     });
     let rowTotal = 0;
