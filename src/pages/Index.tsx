@@ -179,6 +179,18 @@ export default function Index() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() - 1);
+                      const next = format(d, "yyyy-MM-dd");
+                      if (next >= "2026-01-01") setSelectedDate(next);
+                    }}
+                    disabled={selectedDate <= "2026-01-01"}
+                    className="p-1 rounded-md border border-blue-600 bg-blue-600 text-primary-foreground disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
                   <span className="text-xs text-muted-foreground w-10 text-right">
                     Day {parseInt(selectedDate.slice(8, 10), 10)}
                   </span>
@@ -193,6 +205,16 @@ export default function Index() {
                     }}
                     className="w-40 accent-primary cursor-pointer"
                   />
+                  <button
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() + 1);
+                      setSelectedDate(format(d, "yyyy-MM-dd"));
+                    }}
+                    className="p-1 rounded-md border border-blue-600 bg-blue-600 text-primary-foreground"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             )}
