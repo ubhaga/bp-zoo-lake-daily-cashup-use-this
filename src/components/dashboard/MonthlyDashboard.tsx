@@ -41,6 +41,7 @@ function computeDayMetrics(
   dateStr: string,
   cashup: DailyCashup | undefined,
   managerEntry: ManagerDailyEntry | undefined,
+  dayEndPayoutsByDate: Record<string, number>,
 ): DayMetrics {
   if (!cashup && !managerEntry) {
     return {
