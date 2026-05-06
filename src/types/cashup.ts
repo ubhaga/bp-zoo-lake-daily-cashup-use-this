@@ -73,6 +73,8 @@ export interface CashierShift {
   extraCustomerPaidEFTs?: NamedAdjustment[];
   customerPaidEFT?: number;
   customerPaidEFTName?: string;
+  /** Exact Short/(Over) shown and saved from the Cashier Daily form. */
+  shortOver?: number;
 }
 
 export interface DailyCashup {
@@ -107,6 +109,8 @@ export interface DailyCashup {
     returns: number;
     speedpoints: SpeedpointEntry[];
     accounts: AccountEntry[];
+    /** Exact Short/(Over) shown and saved from the Cashier Daily form. */
+    shortOver?: number;
   };
   notes: string;
   locked: boolean;
