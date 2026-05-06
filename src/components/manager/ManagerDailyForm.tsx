@@ -11,6 +11,7 @@ import { format, subDays, addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { extractDayEndInvoiceTotals } from "@/lib/dayEndInvoiceTotals";
 import { extractDayEndCreditors } from "@/lib/dayEndCreditors";
+import { getCashierBalanceMetrics, parseDayEndReportMetrics, type DayEndReportMetrics } from "@/lib/cashierBalanceMetrics";
 import { ManualPumpReadings } from "@/components/manager/ManualPumpReadings";
 import { useCommissionSchedules } from "@/hooks/useCommissionSchedules";
 import { commissionMatchesDate, describeSchedule } from "@/lib/commissionSchedules";
@@ -299,6 +300,7 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
   const usePrevClosingAsOpening = selectedDate >= "2026-01-01" && !isFirstJan2026 && prevClosing !== null;
 
   const [form, setForm] = useState<Omit<ManagerDailyEntry, "id">>(() => blankEntry(selectedDate));
+  const [cashierReportMetrics, setCashierReportMetrics] = useState<DayEndReportMetrics | null>(null);
 
   // Find prev day's bank charges rate for auto-fill
   const prevEntry = getManagerEntryByDate(prevDate);
@@ -380,6 +382,27 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
           eftInvoices: [...withEftCat, ...manualEfts],
         };
       });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (selectedDate < DAY_END_INVOICE_CUTOFF) {
+      setCashierReportMetrics(null);
+      return;
+    }
+
+    (async () => {
+      const { data } = await supabase
+        .from("day_end_uploads")
+        .select("content")
+        .eq("date", selectedDate)
+        .maybeSingle();
+      if (!cancelled) setCashierReportMetrics(parseDayEndReportMetrics(data?.content));
     })();
 
     return () => {
@@ -723,41 +746,9 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
     toast({ title: "Manager entry saved", description: desc });
   };
 
-  // Cashier short/over calculations — must match CashierDailyForm exactly
+  // Cashier short/over calculations — same source used by Cashier Daily and Dashboard.
   const cashierBlock = cashup
-    ? (() => {
-        const shopNetSales = cashup.shop.income - cashup.shop.returns - (cashup.shop.returns_today ?? 0);
-        const shopPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
-        const shopTotalReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
-        const shopTotalTakings = shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopTotalReceipts;
-
-        // Must match CashierDailyForm exactly: cashConnectTotal = cashDepositedBanking + easyPay + coins
-        const cashConnectTotal = cashup.shop.cashDepositedBanking + cashup.shop.easyPay + cashup.shop.coins;
-        const shopSpeedpointTotal = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
-        const shopAccountTotal = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
-        const shopOtherTotal = cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
-        const shopDiff =
-          shopTotalTakings -
-          cashConnectTotal -
-          shopSpeedpointTotal -
-          shopAccountTotal -
-          shopOtherTotal -
-          cashup.shop.returns_mop -
-          (cashup.shop.returnsNotCaptured ?? 0) -
-          (cashup.shop.attendantShortOver ?? 0) -
-          (cashup.shop.customerToPay ?? 0) -
-          (cashup.shop.customerPaidEFT ?? 0) -
-          (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0) -
-          (cashup.shop.extraCustomerToPays ?? []).reduce((s, r) => s + (r.amount || 0), 0) -
-          (cashup.shop.extraCustomerPaidEFTs ?? []).reduce((s, r) => s + (r.amount || 0), 0);
-
-        const optNetSales = cashup.opt.income - cashup.opt.returns;
-        const optSpeedpointTotal = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
-        const optAccountTotal = cashup.opt.accounts.reduce((s, a) => s + a.amount, 0);
-        const optDiff = optNetSales - optSpeedpointTotal - optAccountTotal;
-
-        return { shopDiff, optDiff };
-      })()
+    ? getCashierBalanceMetrics(cashup, selectedDate, cashierReportMetrics)
     : null;
 
   const goDay = (offset: number) => {
