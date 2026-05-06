@@ -36,21 +36,27 @@ export function parseDayEndReportMetrics(content: string | null | undefined): Da
 export function getCashierBalanceMetrics(
   cashup: DailyCashup,
   dateStr: string,
-  _report?: DayEndReportMetrics | null,
+  report?: DayEndReportMetrics | null,
   previousCashup?: DailyCashup,
 ) {
-  // Dashboard balances must match the saved Cashier Daily form exactly.
-  // Do not fall back to uploaded report values here, even when a saved value is 0.
-  const shopIncome = cashup.shop.income;
+  // If the Cashier Daily form saved an exact Short/(Over), display that value.
+  // Older entries do not have it yet, so their fallback calculation mirrors Cashier Daily autofill.
+  const savedShopShortOver = typeof cashup.shop.shortOver === "number" ? cashup.shop.shortOver : null;
+  const savedOptShortOver = typeof cashup.opt.shortOver === "number" ? cashup.opt.shortOver : null;
+  const shopIncome = cashup.shop.income || (report?.shopIncome ?? 0);
   const shopReturns = cashup.shop.returns;
   const returnsMop = cashup.shop.returns_mop;
   const shopNetSales = shopIncome - shopReturns - (cashup.shop.returns_today ?? 0);
-  const optIncome = cashup.opt.income;
+  const optIncome = cashup.opt.income || (report?.optIncome ?? 0);
   const optNetSales = optIncome - cashup.opt.returns;
 
   const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const useDayEndPayouts = dateStr >= "2026-03-01";
-  const shopPayoutsTotal = savedPayoutsTotal;
+  const shopPayoutsTotal = savedPayoutsTotal !== 0
+    ? savedPayoutsTotal
+    : (useDayEndPayouts && report?.payoutTotal != null
+        ? Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0))
+        : 0);
   const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
   const shopTakings = useDayEndPayouts
     ? shopNetSales - shopPayoutsTotal + shopReceipts
@@ -60,7 +66,7 @@ export function getCashierBalanceMetrics(
   const shopSP = cashup.shop.speedpoints.reduce((s, sp) => s + sp.shopAmount, 0);
   const optSP = cashup.opt.speedpoints.reduce((s, sp) => s + sp.optAmount, 0);
   const savedShopAcc = cashup.shop.accounts.reduce((s, a) => s + a.amount, 0);
-  const shopAcc = savedShopAcc;
+  const shopAcc = savedShopAcc !== 0 ? savedShopAcc : (report?.shopAccountsTotal ?? 0);
   const optAcc = cashup.opt.accounts.reduce((s, a) => s + a.amount, 0);
   const shopOther = cashup.shop.otherAdjustments.reduce((s, o) => s + o.amount, 0);
   const extraAttendant = (cashup.shop.extraAttendantShortOvers ?? []).reduce((s, r) => s + (r.amount || 0), 0);
@@ -98,7 +104,7 @@ export function getCashierBalanceMetrics(
     shopAcc,
     optAcc,
     shopOther,
-    shopDiff,
-    optDiff,
+    shopDiff: savedShopShortOver ?? shopDiff,
+    optDiff: savedOptShortOver ?? optDiff,
   };
 }
