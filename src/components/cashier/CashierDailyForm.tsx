@@ -702,6 +702,23 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
     setShop({
       extraCustomerToPays: (form.shop.extraCustomerToPays ?? []).filter((r) => r.id !== id),
     });
+  const addCustomerPaidEFT = () =>
+    setShop({
+      extraCustomerPaidEFTs: [
+        ...(form.shop.extraCustomerPaidEFTs ?? []),
+        { id: uuidv4(), name: "", amount: 0 },
+      ],
+    });
+  const updateExtraCustomerEFT = (id: string, patch: Partial<NamedAdjustment>) =>
+    setShop({
+      extraCustomerPaidEFTs: (form.shop.extraCustomerPaidEFTs ?? []).map((r) =>
+        r.id === id ? { ...r, ...patch } : r,
+      ),
+    });
+  const removeExtraCustomerEFT = (id: string) =>
+    setShop({
+      extraCustomerPaidEFTs: (form.shop.extraCustomerPaidEFTs ?? []).filter((r) => r.id !== id),
+    });
   const removeOther = (id: string) =>
     setShop({ otherAdjustments: form.shop.otherAdjustments.filter((o) => o.id !== id) });
   const updateOther = (id: string, patch: Partial<OtherAdjustment>) =>
