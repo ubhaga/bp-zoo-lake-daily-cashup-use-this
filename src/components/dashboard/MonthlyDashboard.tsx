@@ -317,7 +317,7 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
   const rows: DayMetrics[] = days.map((day) => {
     const ds = format(day, "yyyy-MM-dd");
-    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds));
+    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds), dayEndPayoutsByDate);
   });
 
   // Compute seq gaps across the month
