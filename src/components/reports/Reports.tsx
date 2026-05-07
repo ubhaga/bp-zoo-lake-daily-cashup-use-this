@@ -469,6 +469,12 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // Parse bank lines: extract batch number from description and build lookup by terminal+batch
   const bankParsed: BankParsedLine[] = [];
   bankLines.forEach((l, idx) => {
+    // BP Rewards lines ("SB EFTPOS SET ...") never reconcile against speedpoint
+    // cashups — surface them in the Unmatched panel so the user can see them.
+    if (/SB\s+EFTPOS\s+SET\b/i.test(l.description)) {
+      bankParsed.push({ terminal: 'BP Rewards', batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
+      return;
+    }
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
     const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
