@@ -81,7 +81,7 @@ function computeDayMetrics(
   let payoutsDiff: number | null = null;
   if (cashup && managerEntry) {
     const managerPayoutInvoicesTotal = managerEntry.payoutInvoices.reduce((s, i) => s + i.inclusive, 0);
-    payoutsDiff = cashierPayoutsTotal - managerPayoutInvoicesTotal;
+    payoutsDiff = managerPayoutInvoicesTotal - cashierPayoutsTotal;
   }
 
   let invDiff: number | null = null;
