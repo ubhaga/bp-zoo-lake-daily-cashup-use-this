@@ -77,14 +77,7 @@ function computeDayMetrics(
   let payoutsDiff: number | null = null;
   if (cashup && managerEntry) {
     const managerPayoutInvoicesTotal = managerEntry.payoutInvoices.reduce((s, i) => s + i.inclusive, 0);
-    const useDayEndPayouts = dateStr >= "2026-03-01";
-    const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
-    const hasPayoutSource = useDayEndPayouts
-      ? (reportMetricsByDate[dateStr]?.payoutTotal != null || savedPayoutsTotal !== 0)
-      : true;
-    if (hasPayoutSource) {
-      payoutsDiff = cashierPayoutsTotal - managerPayoutInvoicesTotal;
-    }
+    payoutsDiff = cashierPayoutsTotal - managerPayoutInvoicesTotal;
   }
 
   let invDiff: number | null = null;
