@@ -1787,18 +1787,24 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                         catMap[key].vat += r.vat;
                       });
 
-                      const cosFuel = catMap['COS fuel'];
+                      const isCosFuelCategory = (category: string) => category.trim().toLowerCase() === 'cos fuel';
+                      const cosFuelEntries = Object.entries(catMap).filter(([k]) => isCosFuelCategory(k));
+                      const cosFuel = cosFuelEntries.reduce(
+                        (a, [, v]) => ({ incl: a.incl + v.incl, vat: a.vat + v.vat }),
+                        { incl: 0, vat: 0 }
+                      );
+                      const hasCosFuel = cosFuelEntries.length > 0;
                       const otherCats = Object.entries(catMap)
-                        .filter(([k]) => k !== 'COS fuel')
+                        .filter(([k]) => !isCosFuelCategory(k))
                         .sort((a, b) => a[0].localeCompare(b[0]))
                         .map(([category, v]) => ({
                           category, incl: v.incl, vat: v.vat, excl: v.incl - v.vat,
                         }));
                       const otherTotals = otherCats.reduce((a, r) => ({ incl: a.incl + r.incl, vat: a.vat + r.vat, excl: a.excl + r.excl }), { incl: 0, vat: 0, excl: 0 });
                       const eftTotals = {
-                        incl: (cosFuel?.incl || 0) + otherTotals.incl,
-                        vat: (cosFuel?.vat || 0) + otherTotals.vat,
-                        excl: (cosFuel ? cosFuel.incl - cosFuel.vat : 0) + otherTotals.excl,
+                        incl: cosFuel.incl + otherTotals.incl,
+                        vat: cosFuel.vat + otherTotals.vat,
+                        excl: (cosFuel.incl - cosFuel.vat) + otherTotals.excl,
                       };
 
                       return (
@@ -1834,10 +1840,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                             <TableCell />
                           </TableRow>
 
-                          {cosFuel && (
+                          {hasCosFuel && (
                             <>
                               <TableRow>
-                                <TableCell colSpan={3} className="text-sm">COS fuel</TableCell>
+                                <TableCell colSpan={3} className="text-sm">COS Fuel</TableCell>
                                 <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} /></TableCell>
                                 <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
                                 <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
