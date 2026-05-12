@@ -63,16 +63,19 @@ function computeDayMetrics(
 
   let shopDiff: number | null = null;
   let optDiff: number | null = null;
+  let cashierPayoutsTotal = 0;
 
   if (cashup) {
     const metrics = getCashierBalanceMetrics(cashup, dateStr, reportMetricsByDate[dateStr], previousCashup);
     shopDiff = metrics.shopDiff;
     optDiff = metrics.optDiff;
+    // Use the same payouts source as the Cashier balance: day-end report from
+    // 2026-03-01 onwards, otherwise the saved Cashier Daily payouts.
+    cashierPayoutsTotal = metrics.shopPayoutsTotal;
   }
 
   let payoutsDiff: number | null = null;
   if (cashup && managerEntry) {
-    const cashierPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
     const managerPayoutInvoicesTotal = managerEntry.payoutInvoices.reduce((s, i) => s + i.inclusive, 0);
     payoutsDiff = cashierPayoutsTotal - managerPayoutInvoicesTotal;
   }
