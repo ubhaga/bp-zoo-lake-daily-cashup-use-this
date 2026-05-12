@@ -858,6 +858,25 @@ export function ManagerDailyForm({ selectedDate, onDateChange }: Props) {
           onMove={(id) => moveInvoice(id, "payout")}
           moveLabel="Move invoice to EFT"
         />
+        {cashup && (
+          <div className="px-3 py-2 border-t">
+            <DataRow label="Difference (Payouts captured on Netacc - Cashier Payouts)">
+              <div className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${Math.abs(payoutInvoiceTotal - cashierPayoutsTotal) < 0.50 ? "status-green" : "status-red"}`}>
+                {Math.abs(payoutInvoiceTotal - cashierPayoutsTotal) < 0.50 ? (
+                  <>
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span>MATCH</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>Diff {new Intl.NumberFormat("en-ZA", { minimumFractionDigits: 2 }).format(Math.abs(payoutInvoiceTotal - cashierPayoutsTotal))}</span>
+                  </>
+                )}
+              </div>
+            </DataRow>
+          </div>
+        )}
       </Section>
 
       {/* 1.2 EFT / Non-Cash Invoices */}
