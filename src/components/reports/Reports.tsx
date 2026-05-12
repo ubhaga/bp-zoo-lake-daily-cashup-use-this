@@ -1805,36 +1805,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                         <>
                           <TableRow><TableCell colSpan={7} className="pt-6 pb-1"><span className="font-semibold text-sm">Summary by Category — EFTs</span></TableCell></TableRow>
 
-                          {cosFuel && (
-                            <>
-                              <TableRow className="bg-muted/30">
-                                <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">COS fuel</TableCell>
-                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Incl. Amount</TableCell>
-                                <TableCell className="text-right font-medium text-xs text-muted-foreground">VAT</TableCell>
-                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Excl. Amount</TableCell>
-                                <TableCell />
-                              </TableRow>
-                              <TableRow>
-                                <TableCell colSpan={3} className="text-sm">COS fuel</TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
-                                <TableCell />
-                              </TableRow>
-                              <TableRow className="bg-muted/20 font-semibold">
-                                <TableCell colSpan={3}>COS fuel Total</TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} highlight /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
-                                <TableCell />
-                              </TableRow>
-                            </>
-                          )}
-
                           {otherCats.length > 0 && (
                             <>
                               <TableRow className="bg-muted/30">
-                                <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">Other Categories</TableCell>
+                                <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">Category</TableCell>
                                 <TableCell className="text-right font-medium text-xs text-muted-foreground">Incl. Amount</TableCell>
                                 <TableCell className="text-right font-medium text-xs text-muted-foreground">VAT</TableCell>
                                 <TableCell className="text-right font-medium text-xs text-muted-foreground">Excl. Amount</TableCell>
@@ -1849,23 +1823,35 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                                   <TableCell />
                                 </TableRow>
                               ))}
-                              <TableRow className="bg-muted/20 font-semibold">
-                                <TableCell colSpan={3}>Other Categories Total</TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.incl} highlight /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.vat} /></TableCell>
-                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.excl} /></TableCell>
-                                <TableCell />
-                              </TableRow>
                             </>
                           )}
 
                           <TableRow className="bg-secondary font-semibold">
                             <TableCell colSpan={3}>EFTs Total</TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.incl} highlight /></TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.vat} /></TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.excl} /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={otherTotals.incl} highlight /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={otherTotals.vat} /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={otherTotals.excl} /></TableCell>
                             <TableCell />
                           </TableRow>
+
+                          {cosFuel && (
+                            <>
+                              <TableRow>
+                                <TableCell colSpan={3} className="text-sm">COS fuel</TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
+                                <TableCell />
+                              </TableRow>
+                              <TableRow className="bg-secondary font-semibold">
+                                <TableCell colSpan={3}>EFT Incl Fuel TOTAL</TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={eftTotals.incl} highlight /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={eftTotals.vat} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={eftTotals.excl} /></TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </>
+                          )}
                         </>
                       );
                     })()}
