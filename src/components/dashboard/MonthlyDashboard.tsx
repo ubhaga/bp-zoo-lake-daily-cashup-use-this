@@ -6,7 +6,11 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonth
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBankStatementDate } from "@/lib/bankStatementDate";
-import { getCashierBalanceMetrics, parseDayEndReportMetrics, type DayEndReportMetrics } from "@/lib/cashierBalanceMetrics";
+import {
+  getCashierBalanceMetrics,
+  parseDayEndReportMetrics,
+  type DayEndReportMetrics,
+} from "@/lib/cashierBalanceMetrics";
 
 import type { DailyCashup, ManagerDailyEntry } from "@/types/cashup";
 
@@ -33,7 +37,7 @@ interface DayMetrics {
 
 const SEQ_TYPE_MAP: Record<string, string> = {
   "Blue Label": "BL",
-  "Easypay": "EP",
+  Easypay: "EP",
   "Lotto Receipts": "LR",
 };
 
@@ -71,7 +75,7 @@ function computeDayMetrics(
     optDiff = metrics.optDiff;
     // Use the same payouts source as the Cashier balance: day-end report from
     // 2026-03-01 onwards, otherwise the saved Cashier Daily payouts.
-    cashierPayoutsTotal = metrics.shopPayoutsTotal;
+    cashierPayoutsTotal = metrics.netDayEndPayoutsTotal;
   }
 
   let payoutsDiff: number | null = null;
@@ -101,9 +105,7 @@ function computeDayMetrics(
   const enteredBy = cashup?.enteredBy || managerEntry?.enteredBy || undefined;
 
   // Check which tracked receipt types exist
-  const seqHasReceipts = cashup
-    ? cashup.shop.receipts.some((r) => SEQ_TYPE_MAP[r.type] && r.amount !== 0)
-    : false;
+  const seqHasReceipts = cashup ? cashup.shop.receipts.some((r) => SEQ_TYPE_MAP[r.type] && r.amount !== 0) : false;
 
   return {
     date: dateStr,
@@ -180,7 +182,15 @@ function StatusIcon({ status }: { status: "green" | "red" | "none" }) {
 }
 
 export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
-  const { getCashupByDate, getManagerEntryByDate, updateManagerEntry, addManagerEntry, cashups, managerEntries, getMonthlyFiguresByMonth } = useCashupStore();
+  const {
+    getCashupByDate,
+    getManagerEntryByDate,
+    updateManagerEntry,
+    addManagerEntry,
+    cashups,
+    managerEntries,
+    getMonthlyFiguresByMonth,
+  } = useCashupStore();
   const [editingExplanations, setEditingExplanations] = useState<Record<string, string>>({});
   const [monthOffset, setMonthOffset] = useState(0);
   const [bankLines, setBankLines] = useState<{ amount: number; description: string; transaction_date: string }[]>([]);
@@ -191,15 +201,15 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
   const monthStart = currentMonth;
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const filterMonth = format(monthStart, 'yyyy-MM');
+  const filterMonth = format(monthStart, "yyyy-MM");
 
   const SEED_BLD = -11906.34;
   const SEED_EASYPAY = 14392.59;
   const SEED_LOTTO = -7691.21;
 
-  const isFirstMonth = filterMonth === '2026-03';
+  const isFirstMonth = filterMonth === "2026-03";
   const prevMonth = useMemo(() => {
-    const d = new Date(filterMonth + '-01');
+    const d = new Date(filterMonth + "-01");
     d.setMonth(d.getMonth() - 1);
     return d.toISOString().slice(0, 7);
   }, [filterMonth]);
@@ -208,13 +218,19 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
   useEffect(() => {
     const load = async () => {
-      const bankRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', filterMonth);
+      const bankRes = await supabase
+        .from("bank_statement_lines")
+        .select("amount, description, transaction_date")
+        .eq("month", filterMonth);
       setBankLines(((bankRes as any)?.data ?? []) as typeof bankLines);
       if (!isFirstMonth) {
-        const prevRes = await supabase.from('bank_statement_lines').select('amount, description, transaction_date').eq('month', prevMonth);
+        const prevRes = await supabase
+          .from("bank_statement_lines")
+          .select("amount, description, transaction_date")
+          .eq("month", prevMonth);
         setPrevBankLines(((prevRes as any)?.data ?? []) as typeof bankLines);
       }
-      const dayEndRes = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
+      const dayEndRes = await supabase.from("day_end_uploads").select("date, content").eq("month", filterMonth);
       const map: Record<string, DayEndReportMetrics> = {};
       ((dayEndRes as any)?.data ?? []).forEach((row: { date: string; content: string }) => {
         const metrics = parseDayEndReportMetrics(row.content);
@@ -225,40 +241,50 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
     load();
   }, [filterMonth, isFirstMonth, prevMonth]);
 
-  const computeAirtimeClosing = useCallback((
-    monthStr: string,
-    lines: typeof bankLines,
-    openBld: number, openEp: number, openLt: number,
-  ) => {
-    const mStart = startOfMonth(new Date(monthStr + '-01'));
-    const mEnd = endOfMonth(mStart);
-    const mDays = eachDayOfInterval({ start: mStart, end: mEnd });
-    const mCashups = new Map(cashups.filter(c => c.month === monthStr).map(c => [c.date, c]));
-    const bldPmts = new Map<string, number>();
-    const lottoPmts = new Map<string, number>();
-    lines.forEach(line => {
-      const desc = line.description.toUpperCase().trim();
-      const dateStr = parseBankStatementDate(line.transaction_date);
-      if (!dateStr) return;
-      if (desc.includes('BLD DO') || desc.includes('BLUE LABEL')) bldPmts.set(dateStr, (bldPmts.get(dateStr) ?? 0) + Math.abs(line.amount));
-      if (desc.includes('ITHUCOLL')) lottoPmts.set(dateStr, (lottoPmts.get(dateStr) ?? 0) + Math.abs(line.amount));
-    });
-    let bld = openBld, ep = openEp, lt = openLt;
-    for (const day of mDays) {
-      const ds = format(day, 'yyyy-MM-dd');
-      const c = mCashups.get(ds);
-      const bldInv = c ? c.shop.receipts.filter((r: any) => r.type === 'Blue Label').reduce((s: number, r: any) => s + r.amount, 0) : 0;
-      const epInv = c ? c.shop.receipts.filter((r: any) => r.type === 'Easypay').reduce((s: number, r: any) => s + r.amount, 0) : 0;
-      const mgrEntry = managerEntries.find(e => e.date === ds);
-      const dfCC = mgrEntry?.deepFrozenCC ?? 0;
-      const ltRec = c ? c.shop.receipts.filter((r: any) => r.type === 'Lotto Receipts').reduce((s: number, r: any) => s + r.amount, 0) : 0;
-      const ltPay = c ? (c.shop.lottoPayouts ?? 0) : 0;
-      bld = bld - bldInv + (bldPmts.get(ds) ?? 0) + (mgrEntry?.blueLabelComm ?? 0);
-      ep = ep - (epInv + dfCC) + (c?.shop.easyPay ?? 0) + (mgrEntry?.easypayComm ?? 0);
-      lt = lt - (ltRec - ltPay) + (lottoPmts.get(ds) ?? 0) + (mgrEntry?.lottoComm ?? 0);
-    }
-    return { bld, ep, lt };
-  }, [cashups, managerEntries]);
+  const computeAirtimeClosing = useCallback(
+    (monthStr: string, lines: typeof bankLines, openBld: number, openEp: number, openLt: number) => {
+      const mStart = startOfMonth(new Date(monthStr + "-01"));
+      const mEnd = endOfMonth(mStart);
+      const mDays = eachDayOfInterval({ start: mStart, end: mEnd });
+      const mCashups = new Map(cashups.filter((c) => c.month === monthStr).map((c) => [c.date, c]));
+      const bldPmts = new Map<string, number>();
+      const lottoPmts = new Map<string, number>();
+      lines.forEach((line) => {
+        const desc = line.description.toUpperCase().trim();
+        const dateStr = parseBankStatementDate(line.transaction_date);
+        if (!dateStr) return;
+        if (desc.includes("BLD DO") || desc.includes("BLUE LABEL"))
+          bldPmts.set(dateStr, (bldPmts.get(dateStr) ?? 0) + Math.abs(line.amount));
+        if (desc.includes("ITHUCOLL")) lottoPmts.set(dateStr, (lottoPmts.get(dateStr) ?? 0) + Math.abs(line.amount));
+      });
+      let bld = openBld,
+        ep = openEp,
+        lt = openLt;
+      for (const day of mDays) {
+        const ds = format(day, "yyyy-MM-dd");
+        const c = mCashups.get(ds);
+        const bldInv = c
+          ? c.shop.receipts.filter((r: any) => r.type === "Blue Label").reduce((s: number, r: any) => s + r.amount, 0)
+          : 0;
+        const epInv = c
+          ? c.shop.receipts.filter((r: any) => r.type === "Easypay").reduce((s: number, r: any) => s + r.amount, 0)
+          : 0;
+        const mgrEntry = managerEntries.find((e) => e.date === ds);
+        const dfCC = mgrEntry?.deepFrozenCC ?? 0;
+        const ltRec = c
+          ? c.shop.receipts
+              .filter((r: any) => r.type === "Lotto Receipts")
+              .reduce((s: number, r: any) => s + r.amount, 0)
+          : 0;
+        const ltPay = c ? (c.shop.lottoPayouts ?? 0) : 0;
+        bld = bld - bldInv + (bldPmts.get(ds) ?? 0) + (mgrEntry?.blueLabelComm ?? 0);
+        ep = ep - (epInv + dfCC) + (c?.shop.easyPay ?? 0) + (mgrEntry?.easypayComm ?? 0);
+        lt = lt - (ltRec - ltPay) + (lottoPmts.get(ds) ?? 0) + (mgrEntry?.lottoComm ?? 0);
+      }
+      return { bld, ep, lt };
+    },
+    [cashups, managerEntries],
+  );
 
   const airtimeClosing = useMemo(() => {
     const opening = isFirstMonth
@@ -274,16 +300,22 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
     const mEp = airtimeMonthly.airtimeEasypayBalance ?? 0;
     const mLt = airtimeMonthly.airtimeLottoBalance ?? 0;
     return {
-      bldOk: Math.abs((-airtimeClosing.bld) - mBld) < 2,
+      bldOk: Math.abs(-airtimeClosing.bld - mBld) < 2,
       epOk: Math.abs(airtimeClosing.ep - mEp) < 2,
-      ltOk: Math.abs((-airtimeClosing.lt) - mLt) < 2,
+      ltOk: Math.abs(-airtimeClosing.lt - mLt) < 2,
     };
   }, [airtimeClosing, airtimeMonthly]);
 
   const rows: DayMetrics[] = days.map((day) => {
     const ds = format(day, "yyyy-MM-dd");
     const previousDay = format(new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1), "yyyy-MM-dd");
-    return computeDayMetrics(ds, getCashupByDate(ds), getManagerEntryByDate(ds), reportMetricsByDate, getCashupByDate(previousDay));
+    return computeDayMetrics(
+      ds,
+      getCashupByDate(ds),
+      getManagerEntryByDate(ds),
+      reportMetricsByDate,
+      getCashupByDate(previousDay),
+    );
   });
 
   // Compute seq gaps across the month
@@ -293,55 +325,58 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
   }
 
   const handleExplanationChange = useCallback((date: string, value: string) => {
-    setEditingExplanations(prev => ({ ...prev, [date]: value }));
+    setEditingExplanations((prev) => ({ ...prev, [date]: value }));
   }, []);
 
-  const handleExplanationBlur = useCallback(async (date: string) => {
-    const value = editingExplanations[date];
-    if (value === undefined) return;
-    const existing = getManagerEntryByDate(date);
-    if (existing) {
-      await updateManagerEntry(existing.id, { explanations: value });
-    } else {
-      await addManagerEntry({
-        date,
-        cashupId: '',
-        enteredBy: '',
-        explanations: value,
-        payoutInvoices: [],
-        eftInvoices: [],
-        coinsOpeningBalance: 0,
-        easypayOpeningBalance: 0,
-        cashConnectOpeningBalance: 0,
-        dailyCoins: 0,
-        cashDepositedEasypay: 0,
-        cashDepositedCashConnect: 0,
-        ccBagClosureCoins: 0,
-        ccBagClosureEasypay: 0,
-        ccBagClosureCashConnect: 0,
-        transferFromCoins: 0,
-        branchDayEndTotal: 0,
-        branchDayEndVat: 0,
-        invoiceNotes: '',
-        cashReconcNotes: '',
-        bankChargesRate: 0,
-        bankCharges: 0,
-        banking: 0,
-        deepFrozenCC: 0,
-        blueLabelComm: 0,
-        easypayComm: 0,
-        lottoComm: 0,
-        lottoNetSalesComm: 0,
-        lottoPayoutComm: 0,
-        locked: false,
+  const handleExplanationBlur = useCallback(
+    async (date: string) => {
+      const value = editingExplanations[date];
+      if (value === undefined) return;
+      const existing = getManagerEntryByDate(date);
+      if (existing) {
+        await updateManagerEntry(existing.id, { explanations: value });
+      } else {
+        await addManagerEntry({
+          date,
+          cashupId: "",
+          enteredBy: "",
+          explanations: value,
+          payoutInvoices: [],
+          eftInvoices: [],
+          coinsOpeningBalance: 0,
+          easypayOpeningBalance: 0,
+          cashConnectOpeningBalance: 0,
+          dailyCoins: 0,
+          cashDepositedEasypay: 0,
+          cashDepositedCashConnect: 0,
+          ccBagClosureCoins: 0,
+          ccBagClosureEasypay: 0,
+          ccBagClosureCashConnect: 0,
+          transferFromCoins: 0,
+          branchDayEndTotal: 0,
+          branchDayEndVat: 0,
+          invoiceNotes: "",
+          cashReconcNotes: "",
+          bankChargesRate: 0,
+          bankCharges: 0,
+          banking: 0,
+          deepFrozenCC: 0,
+          blueLabelComm: 0,
+          easypayComm: 0,
+          lottoComm: 0,
+          lottoNetSalesComm: 0,
+          lottoPayoutComm: 0,
+          locked: false,
+        });
+      }
+      setEditingExplanations((prev) => {
+        const next = { ...prev };
+        delete next[date];
+        return next;
       });
-    }
-    setEditingExplanations(prev => {
-      const next = { ...prev };
-      delete next[date];
-      return next;
-    });
-  }, [editingExplanations, getManagerEntryByDate, updateManagerEntry, addManagerEntry]);
+    },
+    [editingExplanations, getManagerEntryByDate, updateManagerEntry, addManagerEntry],
+  );
 
   const dataRows = rows.filter((r) => r.hasData);
   const totalShopDiff = dataRows.reduce((s, r) => s + (r.shopDiff ?? 0), 0);
@@ -375,16 +410,24 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-center px-1 py-2 font-semibold text-muted-foreground w-8 border-r text-xs">Status</th>
+                <th className="text-center px-1 py-2 font-semibold text-muted-foreground w-8 border-r text-xs">
+                  Status
+                </th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Date</th>
-                <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Entered By</th>
-                <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Shop Till</th>
+                <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">
+                  Entered By
+                </th>
+                <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">
+                  Shop Till
+                </th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Payouts</th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">OPT</th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Invoices</th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">VAT</th>
                 <th className="text-center px-1 py-2 font-semibold text-muted-foreground border-r text-xs">Seq #</th>
-                <th className="text-center px-1 py-2 font-semibold text-muted-foreground" style={{ width: '35%' }}>Explanation</th>
+                <th className="text-center px-1 py-2 font-semibold text-muted-foreground" style={{ width: "35%" }}>
+                  Explanation
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -393,8 +436,12 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                 if (!row.hasData) {
                   return (
                     <tr key={row.date} className="border-b last:border-b-0 bg-muted/10">
-                      <td className="px-1 py-1 border-r"><StatusIcon status="none" /></td>
-                      <td className="px-1 py-1 text-center text-muted-foreground/40 border-r text-xs">{format(d, "EEE dd")}</td>
+                      <td className="px-1 py-1 border-r">
+                        <StatusIcon status="none" />
+                      </td>
+                      <td className="px-1 py-1 text-center text-muted-foreground/40 border-r text-xs">
+                        {format(d, "EEE dd")}
+                      </td>
                       <td colSpan={8} className="px-1 py-1 text-muted-foreground/30 text-center italic text-xs">
                         No data
                       </td>
@@ -435,10 +482,14 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                         format(d, "EEE dd")
                       )}
                     </td>
-                    <td className="px-1 py-1 text-center text-muted-foreground border-r text-xs">{row.enteredBy || "—"}</td>
+                    <td className="px-1 py-1 text-center text-muted-foreground border-r text-xs">
+                      {row.enteredBy || "—"}
+                    </td>
                     <td className="px-1 py-1 text-center border-r">
                       {row.shopDiff !== null ? (
-                        <span className={`inline-flex items-center justify-center font-mono text-xs ${shopOk ? "text-green-700" : "text-red-600 font-semibold"}`}>
+                        <span
+                          className={`inline-flex items-center justify-center font-mono text-xs ${shopOk ? "text-green-700" : "text-red-600 font-semibold"}`}
+                        >
                           <CurrencyDisplay value={row.shopDiff} />
                         </span>
                       ) : (
@@ -447,7 +498,9 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                     </td>
                     <td className="px-1 py-1 text-center border-r">
                       {row.payoutsDiff !== null ? (
-                        <span className={`inline-flex items-center justify-center font-mono text-xs ${payoutsOk ? "text-green-700" : "text-red-600 font-semibold"}`}>
+                        <span
+                          className={`inline-flex items-center justify-center font-mono text-xs ${payoutsOk ? "text-green-700" : "text-red-600 font-semibold"}`}
+                        >
                           {payoutsOk ? "✓" : <CurrencyDisplay value={row.payoutsDiff} />}
                         </span>
                       ) : (
@@ -497,11 +550,14 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
                         className="w-full min-h-[28px] text-xs rounded-md border border-input bg-background px-2 py-1 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         rows={1}
                         placeholder={allOk ? "" : "Explain variance..."}
-                        value={editingExplanations[row.date] ?? (getManagerEntryByDate(row.date)?.explanations || getCashupByDate(row.date)?.notes || "")}
+                        value={
+                          editingExplanations[row.date] ??
+                          (getManagerEntryByDate(row.date)?.explanations || getCashupByDate(row.date)?.notes || "")
+                        }
                         onChange={(e) => {
                           handleExplanationChange(row.date, e.target.value);
-                          e.target.style.height = 'auto';
-                          e.target.style.height = e.target.scrollHeight + 'px';
+                          e.target.style.height = "auto";
+                          e.target.style.height = e.target.scrollHeight + "px";
                         }}
                         onBlur={() => handleExplanationBlur(row.date)}
                       />
@@ -554,18 +610,19 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
 
       {/* Airtime Recon Reconciliation */}
       <div className="border rounded-xl overflow-hidden">
-        <div className="bg-muted/50 px-3 py-2 border-b font-semibold text-sm">
-          Airtime / Lotto Reconciliation
-        </div>
+        <div className="bg-muted/50 px-3 py-2 border-b font-semibold text-sm">Airtime / Lotto Reconciliation</div>
         <div className="grid grid-cols-3 gap-0 text-sm">
           {[
-            { label: 'Blue Label', ok: airtimeStatus?.bldOk ?? null },
-            { label: 'Easy Pay', ok: airtimeStatus?.epOk ?? null },
-            { label: 'Lotto', ok: airtimeStatus?.ltOk ?? null },
+            { label: "Blue Label", ok: airtimeStatus?.bldOk ?? null },
+            { label: "Easy Pay", ok: airtimeStatus?.epOk ?? null },
+            { label: "Lotto", ok: airtimeStatus?.ltOk ?? null },
           ].map(({ label, ok }) => (
-            <div key={label} className={`flex items-center justify-center gap-2 px-3 py-3 border-r last:border-r-0 ${
-              ok === null ? 'bg-muted/20' : ok ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20'
-            }`}>
+            <div
+              key={label}
+              className={`flex items-center justify-center gap-2 px-3 py-3 border-r last:border-r-0 ${
+                ok === null ? "bg-muted/20" : ok ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20"
+              }`}
+            >
               {ok === null ? (
                 <MinusCircle className="h-4 w-4 text-muted-foreground/40" />
               ) : ok ? (
@@ -573,10 +630,12 @@ export function MonthlyDashboard({ selectedDate, onNavigateToDate }: Props) {
               ) : (
                 <XCircle className="h-4 w-4 text-red-600" />
               )}
-              <span className={`text-xs font-semibold ${
-                ok === null ? 'text-muted-foreground' : ok ? 'text-green-700' : 'text-red-600'
-              }`}>
-                {label}: {ok === null ? 'No data' : ok ? 'PASS' : 'FAIL'}
+              <span
+                className={`text-xs font-semibold ${
+                  ok === null ? "text-muted-foreground" : ok ? "text-green-700" : "text-red-600"
+                }`}
+              >
+                {label}: {ok === null ? "No data" : ok ? "PASS" : "FAIL"}
               </span>
             </div>
           ))}
