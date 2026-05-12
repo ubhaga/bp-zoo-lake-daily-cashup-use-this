@@ -75,7 +75,7 @@ function computeDayMetrics(
     optDiff = metrics.optDiff;
     // Use the same payouts source as the Cashier balance: day-end report from
     // 2026-03-01 onwards, otherwise the saved Cashier Daily payouts.
-    cashierPayoutsTotal = metrics.netDayEndPayoutsTotal;
+    cashierPayoutsTotal = metrics.shopPayoutsTotal;
   }
 
   let payoutsDiff: number | null = null;
