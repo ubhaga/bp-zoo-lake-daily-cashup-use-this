@@ -1786,35 +1786,84 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                         catMap[key].incl += r.inclusive;
                         catMap[key].vat += r.vat;
                       });
-                      const catSummary = Object.entries(catMap).sort((a, b) => a[0].localeCompare(b[0])).map(([category, v]) => ({
-                        category, incl: v.incl, vat: v.vat, excl: v.incl - v.vat,
-                      }));
-                      const catTotals = catSummary.reduce((a, r) => ({ incl: a.incl + r.incl, vat: a.vat + r.vat, excl: a.excl + r.excl }), { incl: 0, vat: 0, excl: 0 });
+
+                      const cosFuel = catMap['COS fuel'];
+                      const otherCats = Object.entries(catMap)
+                        .filter(([k]) => k !== 'COS fuel')
+                        .sort((a, b) => a[0].localeCompare(b[0]))
+                        .map(([category, v]) => ({
+                          category, incl: v.incl, vat: v.vat, excl: v.incl - v.vat,
+                        }));
+                      const otherTotals = otherCats.reduce((a, r) => ({ incl: a.incl + r.incl, vat: a.vat + r.vat, excl: a.excl + r.excl }), { incl: 0, vat: 0, excl: 0 });
+                      const eftTotals = {
+                        incl: (cosFuel?.incl || 0) + otherTotals.incl,
+                        vat: (cosFuel?.vat || 0) + otherTotals.vat,
+                        excl: (cosFuel ? cosFuel.incl - cosFuel.vat : 0) + otherTotals.excl,
+                      };
 
                       return (
                         <>
                           <TableRow><TableCell colSpan={7} className="pt-6 pb-1"><span className="font-semibold text-sm">Summary by Category — EFTs</span></TableCell></TableRow>
-                          <TableRow className="bg-muted/30">
-                            <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">Category</TableCell>
-                            <TableCell className="text-right font-medium text-xs text-muted-foreground">Incl. Amount</TableCell>
-                            <TableCell className="text-right font-medium text-xs text-muted-foreground">VAT</TableCell>
-                            <TableCell className="text-right font-medium text-xs text-muted-foreground">Excl. Amount</TableCell>
-                            <TableCell />
-                          </TableRow>
-                          {catSummary.map((r, i) => (
-                            <TableRow key={`ec-${i}`}>
-                              <TableCell colSpan={3} className="text-sm">{r.category}</TableCell>
-                              <TableCell className="text-right"><CurrencyDisplay value={r.incl} /></TableCell>
-                              <TableCell className="text-right"><CurrencyDisplay value={r.vat} /></TableCell>
-                              <TableCell className="text-right"><CurrencyDisplay value={r.excl} /></TableCell>
-                              <TableCell />
-                            </TableRow>
-                          ))}
+
+                          {cosFuel && (
+                            <>
+                              <TableRow className="bg-muted/30">
+                                <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">COS fuel</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Incl. Amount</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">VAT</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Excl. Amount</TableCell>
+                                <TableCell />
+                              </TableRow>
+                              <TableRow>
+                                <TableCell colSpan={3} className="text-sm">COS fuel</TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
+                                <TableCell />
+                              </TableRow>
+                              <TableRow className="bg-muted/20 font-semibold">
+                                <TableCell colSpan={3}>COS fuel Total</TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl} highlight /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.vat} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={cosFuel.incl - cosFuel.vat} /></TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </>
+                          )}
+
+                          {otherCats.length > 0 && (
+                            <>
+                              <TableRow className="bg-muted/30">
+                                <TableCell colSpan={3} className="font-medium text-xs text-muted-foreground">Other Categories</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Incl. Amount</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">VAT</TableCell>
+                                <TableCell className="text-right font-medium text-xs text-muted-foreground">Excl. Amount</TableCell>
+                                <TableCell />
+                              </TableRow>
+                              {otherCats.map((r, i) => (
+                                <TableRow key={`ec-${i}`}>
+                                  <TableCell colSpan={3} className="text-sm">{r.category}</TableCell>
+                                  <TableCell className="text-right"><CurrencyDisplay value={r.incl} /></TableCell>
+                                  <TableCell className="text-right"><CurrencyDisplay value={r.vat} /></TableCell>
+                                  <TableCell className="text-right"><CurrencyDisplay value={r.excl} /></TableCell>
+                                  <TableCell />
+                                </TableRow>
+                              ))}
+                              <TableRow className="bg-muted/20 font-semibold">
+                                <TableCell colSpan={3}>Other Categories Total</TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.incl} highlight /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.vat} /></TableCell>
+                                <TableCell className="text-right"><CurrencyDisplay value={otherTotals.excl} /></TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </>
+                          )}
+
                           <TableRow className="bg-secondary font-semibold">
                             <TableCell colSpan={3}>EFTs Total</TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={catTotals.incl} highlight /></TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={catTotals.vat} /></TableCell>
-                            <TableCell className="text-right"><CurrencyDisplay value={catTotals.excl} /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.incl} highlight /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.vat} /></TableCell>
+                            <TableCell className="text-right"><CurrencyDisplay value={eftTotals.excl} /></TableCell>
                             <TableCell />
                           </TableRow>
                         </>
