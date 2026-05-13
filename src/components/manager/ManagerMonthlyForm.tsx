@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Save, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { parseDayEndReportMetrics, type DayEndReportMetrics } from "@/lib/cashierBalanceMetrics";
 
 interface Props {
   selectedDate: string;
