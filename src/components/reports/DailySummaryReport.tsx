@@ -96,7 +96,7 @@ function computeDaySummary(c: DailyCashup, report?: DayEndReportMetrics | null) 
     extraCustomer -
     extraCustomerEFT;
 
-  const optNetSales = c.opt.income - c.opt.returns;
+  const optNetSales = optIncome - c.opt.returns;
   const optBalance = optNetSales - optSP - optAccounts;
 
   const combinedShortOver = shopBalance + optBalance;
