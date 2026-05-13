@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
 import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { Button } from '@/components/ui/button';
@@ -6,14 +6,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Download } from 'lucide-react';
 import { format } from 'date-fns';
 import type { DailyCashup } from '@/types/cashup';
+import { supabase } from '@/integrations/supabase/client';
+import { parseDayEndReportMetrics, type DayEndReportMetrics } from '@/lib/cashierBalanceMetrics';
 
 interface Props {
   filterMonth: string;
 }
 
-function computeDaySummary(c: DailyCashup) {
-  const shopIncome = c.shop.income;
-  const optIncome = c.opt.income;
+function computeDaySummary(c: DailyCashup, report?: DayEndReportMetrics | null) {
+  const shopIncome = report?.shopIncome ?? c.shop.income;
+  const optIncome = report?.optIncome ?? c.opt.income;
   const totalIncome = shopIncome + optIncome;
 
   const shopReturnsYest = c.shop.returns;
