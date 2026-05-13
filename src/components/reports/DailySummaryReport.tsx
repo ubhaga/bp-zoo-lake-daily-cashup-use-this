@@ -125,7 +125,23 @@ export function DailySummaryReport({ filterMonth }: Props) {
   const { cashups } = useCashupStore();
   const monthCashups = cashups.filter(c => c.month === filterMonth).sort((a, b) => a.date.localeCompare(b.date));
 
-  const rows = monthCashups.map(computeDaySummary);
+  const [reportMetricsByDate, setReportMetricsByDate] = useState<Record<string, DayEndReportMetrics>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
+      const map: Record<string, DayEndReportMetrics> = {};
+      ((res as { data?: { date: string; content: string }[] }).data ?? []).forEach((row) => {
+        const m = parseDayEndReportMetrics(row.content);
+        if (m) map[row.date] = m;
+      });
+      if (!cancelled) setReportMetricsByDate(map);
+    })();
+    return () => { cancelled = true; };
+  }, [filterMonth]);
+
+  const rows = monthCashups.map(c => computeDaySummary(c, reportMetricsByDate[c.date]));
 
   const totals = rows.reduce(
     (acc, r) => {
