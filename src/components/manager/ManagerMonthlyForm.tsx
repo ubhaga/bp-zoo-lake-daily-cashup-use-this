@@ -98,18 +98,46 @@ export function ManagerMonthlyForm({ selectedDate }: Props) {
     else setForm((f) => ({ ...f, month }));
   }, [month, existing?.id]);
 
+  // Day-end uploads provide authoritative income/payout figures when the saved cashup
+  // values are sentinels (e.g. 1) — mirror the Dashboard / Daily Summary overlay logic.
+  const [reportMetricsByDate, setReportMetricsByDate] = useState<Record<string, DayEndReportMetrics>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await supabase.from("day_end_uploads").select("date, content").eq("month", month);
+      const map: Record<string, DayEndReportMetrics> = {};
+      ((res as { data?: { date: string; content: string }[] }).data ?? []).forEach((row) => {
+        const m = parseDayEndReportMetrics(row.content);
+        if (m) map[row.date] = m;
+      });
+      if (!cancelled) setReportMetricsByDate(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [month]);
+
   // Compute from store
   const monthCashups = cashups.filter((c) => c.month === month);
   const monthManagers = managerEntries.filter((e) => e.date.startsWith(month));
 
   const spreadsheetNetSales = monthCashups.reduce((s, c) => {
-    const shopNet = c.shop.income - c.shop.returns - (c.shop.returns_today ?? 0);
-    const optNet = c.opt.income - c.opt.returns - ((c.opt as any).returns_today ?? 0);
+    const r = reportMetricsByDate[c.date];
+    const shopIncome = r?.shopIncome ?? c.shop.income;
+    const optIncome = r?.optIncome ?? c.opt.income;
+    const shopNet = shopIncome - c.shop.returns - (c.shop.returns_today ?? 0);
+    const optNet = optIncome - c.opt.returns - ((c.opt as any).returns_today ?? 0);
     return s + shopNet + optNet;
   }, 0);
 
   const spreadsheetPayouts = monthCashups.reduce((s, c) => {
-    return s + c.shop.payouts.reduce((ps, p) => ps + p.amount, 0) + c.shop.lottoPayouts;
+    const r = reportMetricsByDate[c.date];
+    const lotto = c.shop.lottoPayouts;
+    const useReport = c.date >= "2026-03-01" && r?.payoutTotal != null;
+    const payouts = useReport
+      ? Math.max(0, (r!.payoutTotal as number) - lotto)
+      : c.shop.payouts.reduce((ps, p) => ps + p.amount, 0);
+    return s + payouts + lotto;
   }, 0);
 
   const spreadsheetReceipts = monthCashups.reduce((s, c) => s + c.shop.receipts.reduce((rs, r) => rs + r.amount, 0), 0);
