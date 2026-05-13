@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCashupStore } from '@/store/cashupStore';
 import { CurrencyDisplay } from '@/components/ui/CashupUI';
 import { Button } from '@/components/ui/button';
@@ -6,14 +6,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Download } from 'lucide-react';
 import { format } from 'date-fns';
 import type { DailyCashup } from '@/types/cashup';
+import { supabase } from '@/integrations/supabase/client';
+import { parseDayEndReportMetrics, type DayEndReportMetrics } from '@/lib/cashierBalanceMetrics';
 
 interface Props {
   filterMonth: string;
 }
 
-function computeDaySummary(c: DailyCashup) {
-  const shopIncome = c.shop.income;
-  const optIncome = c.opt.income;
+function computeDaySummary(c: DailyCashup, report?: DayEndReportMetrics | null) {
+  const shopIncome = report?.shopIncome ?? c.shop.income;
+  const optIncome = report?.optIncome ?? c.opt.income;
   const totalIncome = shopIncome + optIncome;
 
   const shopReturnsYest = c.shop.returns;
@@ -26,8 +28,12 @@ function computeDaySummary(c: DailyCashup) {
 
   const netSales = totalIncome - totalReturnsYest - totalReturnsToday;
 
-  const payoutsTotal = c.shop.payouts.reduce((s, p) => s + p.amount, 0);
+  const savedPayoutsTotal = c.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const lottoPayouts = c.shop.lottoPayouts;
+  const useReportPayouts = c.date >= '2026-03-01' && report?.payoutTotal != null;
+  const payoutsTotal = useReportPayouts
+    ? Math.max(0, (report!.payoutTotal as number) - lottoPayouts)
+    : savedPayoutsTotal;
   const totalPayouts = payoutsTotal + lottoPayouts;
 
   const totalReceipts = c.shop.receipts.reduce((s, r) => s + r.amount, 0);
@@ -73,7 +79,7 @@ function computeDaySummary(c: DailyCashup) {
   const shopSP = shopSPExVPlus + shopVPlus;
   const optSP = optSPExVPlus + optVPlus;
 
-  const shopNetSales = c.shop.income - c.shop.returns - c.shop.returns_today;
+  const shopNetSales = shopIncome - c.shop.returns - c.shop.returns_today;
   const shopTakings = shopNetSales - payoutsTotal - lottoPayouts + totalReceipts;
   const shopBalance =
     shopTakings -
@@ -90,7 +96,7 @@ function computeDaySummary(c: DailyCashup) {
     extraCustomer -
     extraCustomerEFT;
 
-  const optNetSales = c.opt.income - c.opt.returns;
+  const optNetSales = optIncome - c.opt.returns;
   const optBalance = optNetSales - optSP - optAccounts;
 
   const combinedShortOver = shopBalance + optBalance;
@@ -119,7 +125,23 @@ export function DailySummaryReport({ filterMonth }: Props) {
   const { cashups } = useCashupStore();
   const monthCashups = cashups.filter(c => c.month === filterMonth).sort((a, b) => a.date.localeCompare(b.date));
 
-  const rows = monthCashups.map(computeDaySummary);
+  const [reportMetricsByDate, setReportMetricsByDate] = useState<Record<string, DayEndReportMetrics>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await supabase.from('day_end_uploads').select('date, content').eq('month', filterMonth);
+      const map: Record<string, DayEndReportMetrics> = {};
+      ((res as { data?: { date: string; content: string }[] }).data ?? []).forEach((row) => {
+        const m = parseDayEndReportMetrics(row.content);
+        if (m) map[row.date] = m;
+      });
+      if (!cancelled) setReportMetricsByDate(map);
+    })();
+    return () => { cancelled = true; };
+  }, [filterMonth]);
+
+  const rows = monthCashups.map(c => computeDaySummary(c, reportMetricsByDate[c.date]));
 
   const totals = rows.reduce(
     (acc, r) => {
