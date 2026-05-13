@@ -79,7 +79,7 @@ function computeDaySummary(c: DailyCashup, report?: DayEndReportMetrics | null) 
   const shopSP = shopSPExVPlus + shopVPlus;
   const optSP = optSPExVPlus + optVPlus;
 
-  const shopNetSales = c.shop.income - c.shop.returns - c.shop.returns_today;
+  const shopNetSales = shopIncome - c.shop.returns - c.shop.returns_today;
   const shopTakings = shopNetSales - payoutsTotal - lottoPayouts + totalReceipts;
   const shopBalance =
     shopTakings -
