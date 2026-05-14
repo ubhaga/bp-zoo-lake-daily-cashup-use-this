@@ -903,10 +903,12 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   const accountsTotal = accountsReport.reduce((s, r) => s + r.amount, 0);
 
   // Invoice report
-  const invoiceReport = monthManagers.flatMap(e => [
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState<'all' | 'Payout' | 'EFT'>('all');
+  const invoiceReportAll = monthManagers.flatMap(e => [
     ...e.payoutInvoices.map(i => ({ date: e.date, type: 'Payout', supplier: i.supplier, category: i.category, docNum: i.branchDocNum, inclusive: i.inclusive, vat: i.vat })),
     ...e.eftInvoices.map(i => ({ date: e.date, type: 'EFT', supplier: i.supplier, category: i.category, docNum: i.branchDocNum, inclusive: i.inclusive, vat: i.vat })),
   ]);
+  const invoiceReport = invoiceTypeFilter === 'all' ? invoiceReportAll : invoiceReportAll.filter(r => r.type === invoiceTypeFilter);
   const invoiceTotal = invoiceReport.reduce((s, r) => s + r.inclusive, 0);
   const invoiceVatTotal = invoiceReport.reduce((s, r) => s + r.vat, 0);
 
@@ -1738,9 +1740,21 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
           <div className="bg-card border rounded-lg overflow-x-clip">
             <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
               <h3 className="font-semibold text-sm">1. Detailed Invoices Per Day</h3>
-              <Button size="sm" variant="outline" onClick={() => exportCSV(invoiceReport, `invoices-${filterMonth}.csv`)}>
-                <Download className="h-3.5 w-3.5 mr-1" />Export CSV
-              </Button>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">Type:</label>
+                <select
+                  value={invoiceTypeFilter}
+                  onChange={(e) => setInvoiceTypeFilter(e.target.value as 'all' | 'Payout' | 'EFT')}
+                  className="h-8 rounded border bg-background px-2 text-xs"
+                >
+                  <option value="all">Payout & EFT</option>
+                  <option value="Payout">Payout</option>
+                  <option value="EFT">EFT</option>
+                </select>
+                <Button size="sm" variant="outline" onClick={() => exportCSV(invoiceReport, `invoices-${filterMonth}.csv`)}>
+                  <Download className="h-3.5 w-3.5 mr-1" />Export CSV
+                </Button>
+              </div>
             </div>
             <Table>
               <TableHeader>
