@@ -470,6 +470,42 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       });
     }
   };
+  const applyUnbatchedBankGroupMatching = (
+    parsedLines: BankParsedLine[],
+    dateRows: Array<{ date: string; terminals: SpDateRow['terminals'] }>,
+    terminal: string,
+  ) => {
+    if (!terminal) return;
+    const claimedBankIds = new Set<string>();
+    const rows = dateRows
+      .filter(r => (r.terminals[terminal]?.total ?? 0) > 0.005)
+      .slice()
+      .sort((a, b) => parseBankReconDate(a.date) - parseBankReconDate(b.date));
+
+    rows.forEach(row => {
+      const td = row.terminals[terminal];
+      if (!td || (td.batchNo && td.batchNo.trim().toUpperCase() !== 'X')) return;
+      const rowTs = parseBankReconDate(row.date);
+      const candidates = parsedLines.filter(bp => {
+        if (bp.terminal !== terminal || bp.batch || claimedBankIds.has(bp.bankLineId)) return false;
+        const bankTs = parseBankReconDate(bp.date);
+        return bankTs > rowTs && bankTs - rowTs <= 7 * 24 * 60 * 60 * 1000;
+      });
+      const byBankDate = new Map<string, BankParsedLine[]>();
+      candidates.forEach(bp => byBankDate.set(bp.date, [...(byBankDate.get(bp.date) ?? []), bp]));
+      const match = [...byBankDate.entries()]
+        .sort((a, b) => parseBankReconDate(a[0]) - parseBankReconDate(b[0]))
+        .find(([, lines]) => Math.abs(lines.reduce((s, bp) => s + bp.amount, 0) - td.total) < 0.01);
+      if (!match) return;
+      const lines = match[1];
+      const synthBatch = `SET-${row.date}-${terminal}`;
+      td.batchNo = synthBatch;
+      lines.forEach(bp => {
+        bp.batch = synthBatch;
+        claimedBankIds.add(bp.bankLineId);
+      });
+    });
+  };
   const speedpointByDate: SpDateRow[] = monthCashups.map(c => {
     const termMap: SpDateRow['terminals'] = {};
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
@@ -506,6 +542,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     const terminalNumber = extractTerminalNumber(t);
     if (terminalNumber) TERMINAL_NUM_MAP[t] = terminalNumber;
   });
+  const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
+  const bpRewardsTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPREWARDS')) || '';
 
   // Parse bank lines: extract batch number from description and build lookup by terminal+batch
   const bankParsed: BankParsedLine[] = [];
@@ -513,7 +551,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     // BP Rewards lines ("SB EFTPOS SET ...") never reconcile against speedpoint
     // cashups — surface them in the Unmatched panel so the user can see them.
     if (/SB\s+EFTPOS\s+SET\b/i.test(l.description)) {
-      bankParsed.push({ terminal: 'BP Rewards', batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
+      if (bpRewardsTerminal) bankParsed.push({ terminal: bpRewardsTerminal, batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
       return;
     }
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
@@ -530,7 +568,6 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // for the BP pay terminal and find the smallest contiguous group whose totals
   // match the bank amount. We then synthesise a shared batch key on both sides so
   // the existing terminal|batch matcher can do the rest.
-  const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
   if (bpPayTerminal) {
     applyBpPaySumMatching(bankParsed, speedpointByDate, bpPayTerminal);
   }
@@ -639,6 +676,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // Parse previous month bank lines
   const prevBankParsed: BankParsedLine[] = [];
   prevBankLines.forEach((l, idx) => {
+    if (/SB\s+EFTPOS\s+SET\b/i.test(l.description)) {
+      if (bpRewardsTerminal) prevBankParsed.push({ terminal: bpRewardsTerminal, batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx: idx + 100000, bankLineId: l.id });
+      return;
+    }
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
     const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
@@ -646,13 +687,6 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
   const prevManuallyMatchedIds = new Set<string>();
   Object.values(prevManualMatches).forEach(arr => arr.forEach(bp => prevManuallyMatchedIds.add(bp.bankLineId)));
-  const prevBankLookup: Record<string, number> = {};
-  prevBankParsed.forEach(bp => {
-    if (!bp.batch) return;
-    if (prevManuallyMatchedIds.has(bp.bankLineId)) return;
-    const k = `${bp.terminal}|${bp.batch}`;
-    prevBankLookup[k] = (prevBankLookup[k] || 0) + bp.amount;
-  });
 
   // Build previous month speedpoint data
   const prevSpeedpointByDate = prevMonthCashups.map(c => {
@@ -675,8 +709,22 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
 
   if (bpPayTerminal) {
-    applyBpPaySumMatching(prevBankParsed, prevSpeedpointByDate, bpPayTerminal);
+    applyBpPaySumMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, bpPayTerminal);
   }
+  SP_TERMINALS
+    .filter(t => t !== bpPayTerminal)
+    .forEach(t => applyUnbatchedBankGroupMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, t));
+
+  const openingBankLookup: Record<string, { amount: number; ids: string[] }> = {};
+  [...prevBankParsed, ...bankParsed].forEach(bp => {
+    if (!bp.batch) return;
+    if (prevManuallyMatchedIds.has(bp.bankLineId) || manuallyMatchedIds.has(bp.bankLineId)) return;
+    const k = `${bp.terminal}|${bp.batch}`;
+    if (!openingBankLookup[k]) openingBankLookup[k] = { amount: 0, ids: [] };
+    openingBankLookup[k].amount += bp.amount;
+    openingBankLookup[k].ids.push(bp.bankLineId);
+  });
+  const openingAutoMatchedIds = new Set<string>();
 
   // Find unmatched batches from previous month
   type OBRow = { date: string; terminal: string; batchNo: string; cashupAmount: number; bankAmount: number; diff: number; manualBankAmount: number };
@@ -693,7 +741,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       if (hasMeaningfulBatch && prevConsumedBatchKeys.has(batchKey)) return;
       if (hasMeaningfulBatch) prevConsumedBatchKeys.add(batchKey);
       
-      const autoBankAmt = prevBankLookup[batchKey] ?? 0;
+      const openingAutoMatch = openingBankLookup[batchKey];
+      const autoBankAmt = openingAutoMatch?.amount ?? 0;
       
       // Check manual matches from previous month
       const prevManualKey = `${r.date}|${t}`;
@@ -701,13 +750,20 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       const prevManualAmt = prevManualLines.reduce((s, ml) => s + ml.amount, 0);
       const totalBank = autoBankAmt + prevManualAmt;
       const diff = td.total - totalBank;
+      if (Math.abs(diff) <= 0.01) {
+        openingAutoMatch?.ids.forEach(id => openingAutoMatchedIds.add(id));
+        return;
+      }
       if (Math.abs(diff) > 0.01) {
         // Check if this OB row has manual matches in the current month
         const obKey = `OB-${r.date}|${t}`;
         const obManualLines = manualMatches[obKey] || [];
         const obManualAmt = obManualLines.reduce((s, ml) => s + ml.amount, 0);
         const finalDiff = diff - obManualAmt;
-      if (Math.abs(finalDiff) <= 0.01) return;
+        if (Math.abs(finalDiff) <= 0.01) {
+          openingAutoMatch?.ids.forEach(id => openingAutoMatchedIds.add(id));
+          return;
+        }
         // Show in OB whether still outstanding or fully matched (so user sees it as cleared)
         openingBalanceRows.push({
           date: r.date,
@@ -730,6 +786,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // Unmatched: bank lines not auto-matched and not manually matched
   // Use consumedBankKeys from matching above instead of re-deriving
   const unmatchedTerminalLines = bankParsed.filter(bp => {
+    if (openingAutoMatchedIds.has(bp.bankLineId)) return false;
     if (manuallyMatchedIds.has(bp.bankLineId)) return false;
     if (unmatchedAutoIds.has(bp.bankLineId)) return true;
     if (!bp.batch) return true;
