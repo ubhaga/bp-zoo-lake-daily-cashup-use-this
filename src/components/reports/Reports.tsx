@@ -646,13 +646,6 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
   const prevManuallyMatchedIds = new Set<string>();
   Object.values(prevManualMatches).forEach(arr => arr.forEach(bp => prevManuallyMatchedIds.add(bp.bankLineId)));
-  const prevBankLookup: Record<string, number> = {};
-  prevBankParsed.forEach(bp => {
-    if (!bp.batch) return;
-    if (prevManuallyMatchedIds.has(bp.bankLineId)) return;
-    const k = `${bp.terminal}|${bp.batch}`;
-    prevBankLookup[k] = (prevBankLookup[k] || 0) + bp.amount;
-  });
 
   // Build previous month speedpoint data
   const prevSpeedpointByDate = prevMonthCashups.map(c => {
