@@ -157,7 +157,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
       .trim();
 
   const supplierByNormalized = new Map(
-    [...suppliers, ...fuelSuppliers].map((supplier) => [normalizeName(supplier), supplier]),
+    [...suppliers, ...bpSuppliers, ...fuelSuppliers].map((supplier) => [normalizeName(supplier), supplier]),
   );
 
   const resolveSupplier = (preferredNames: string[]): string | null => {
@@ -208,7 +208,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
   const supplierWeekly: Record<string, WeekData[]> = {};
   const supplierInvoiceEntries: Record<string, BreakdownEntry[][]> = {};
 
-  [...suppliers, ...fuelSuppliers].forEach((supplier) => {
+  [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
     const weeks: WeekData[] = sundays.map(() => ({ invoices: 0, payments: 0 }));
     const invEntries: BreakdownEntry[][] = sundays.map(() => []);
 
@@ -280,7 +280,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
     if (!isFirstMonth && prevMonth) {
       const prevMonthManagers = managerEntries.filter((e) => e.date.startsWith(prevMonth));
 
-      [...suppliers, ...fuelSuppliers].forEach((supplier) => {
+      [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
         // If there's already a manually-entered OB for this month, keep it
         if (openingBalances[supplier] !== undefined) return;
 
@@ -393,7 +393,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
           size="sm"
           variant="outline"
           onClick={() => {
-            const allSup = [...suppliers, ...fuelSuppliers];
+            const allSup = [...suppliers, ...bpSuppliers, ...fuelSuppliers];
             const headers = [
               "Supplier",
               "Opening Balance",
