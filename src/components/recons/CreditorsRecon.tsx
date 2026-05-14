@@ -101,6 +101,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
 
   const FUEL_CREDITORS = ["Engen", "F2K"];
   const isFuelCreditor = (s: string) => FUEL_CREDITORS.some((fc) => fc.toUpperCase() === s.toUpperCase());
+  const isBpCreditor = (s: string) => s.toUpperCase() === "BP";
 
   // EFT invoices from manager daily entries for this month
   const monthManagers = managerEntries.filter((e) => e.date.startsWith(filterMonth));
