@@ -676,6 +676,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // Parse previous month bank lines
   const prevBankParsed: BankParsedLine[] = [];
   prevBankLines.forEach((l, idx) => {
+    if (/SB\s+EFTPOS\s+SET\b/i.test(l.description)) {
+      if (bpRewardsTerminal) prevBankParsed.push({ terminal: bpRewardsTerminal, batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx: idx + 100000, bankLineId: l.id });
+      return;
+    }
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
     if (!canonicalTerminal || !SP_TERMINALS.includes(canonicalTerminal)) return;
     const batch = extractBatchFromDescription(l.description, TERMINAL_NUM_MAP[canonicalTerminal] || '');
@@ -707,6 +711,9 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   if (bpPayTerminal) {
     applyBpPaySumMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, bpPayTerminal);
   }
+  SP_TERMINALS
+    .filter(t => t !== bpPayTerminal)
+    .forEach(t => applyUnbatchedBankGroupMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, t));
 
   const openingBankLookup: Record<string, { amount: number; ids: string[] }> = {};
   [...prevBankParsed, ...bankParsed].forEach(bp => {
