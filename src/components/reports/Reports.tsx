@@ -674,6 +674,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     return { date: c.date, terminals: termMap };
   });
 
+  if (bpPayTerminal) {
+    applyBpPaySumMatching(prevBankParsed, prevSpeedpointByDate, bpPayTerminal);
+  }
+
   // Find unmatched batches from previous month
   type OBRow = { date: string; terminal: string; batchNo: string; cashupAmount: number; bankAmount: number; diff: number; manualBankAmount: number };
   const openingBalanceRows: OBRow[] = [];
@@ -703,6 +707,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
         const obManualLines = manualMatches[obKey] || [];
         const obManualAmt = obManualLines.reduce((s, ml) => s + ml.amount, 0);
         const finalDiff = diff - obManualAmt;
+      if (Math.abs(finalDiff) <= 0.01) return;
         // Show in OB whether still outstanding or fully matched (so user sees it as cleared)
         openingBalanceRows.push({
           date: r.date,
