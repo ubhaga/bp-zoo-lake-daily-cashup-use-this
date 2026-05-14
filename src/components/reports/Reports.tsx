@@ -429,6 +429,47 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     terminals: Record<string, { batchNo: string; shopAmount: number; optAmount: number; total: number }>;
     total: number;
   };
+  const applyBpPaySumMatching = (
+    parsedLines: BankParsedLine[],
+    dateRows: Array<{ date: string; terminals: SpDateRow['terminals'] }>,
+    terminal: string,
+  ) => {
+    if (!terminal) return;
+    const claimedDates = new Set<string>();
+    const bpBankLines = parsedLines
+      .filter(bp => bp.terminal === terminal && !bp.batch)
+      .slice()
+      .sort((a, b) => parseBankReconDate(a.date) - parseBankReconDate(b.date));
+    const bpCashupDays = dateRows
+      .filter(r => (r.terminals[terminal]?.total ?? 0) > 0.005)
+      .map(r => r.date)
+      .sort();
+
+    for (const bp of bpBankLines) {
+      const bpTs = parseBankReconDate(bp.date);
+      const candidates = bpCashupDays
+        .filter(d => parseBankReconDate(d) < bpTs && !claimedDates.has(d))
+        .reverse();
+      let chosen: string[] | null = null;
+      for (let size = 1; size <= 4 && size <= candidates.length; size++) {
+        const group = candidates.slice(0, size);
+        const sum = group.reduce((s, d) => {
+          const row = dateRows.find(r => r.date === d);
+          return s + (row?.terminals[terminal]?.total ?? 0);
+        }, 0);
+        if (Math.abs(sum - bp.amount) < 0.01) { chosen = group; break; }
+      }
+      if (!chosen) continue;
+      const synthBatch = `BPP-${bp.bankLineId.slice(0, 8)}`;
+      bp.batch = synthBatch;
+      chosen.forEach(d => {
+        claimedDates.add(d);
+        const row = dateRows.find(r => r.date === d);
+        const td = row?.terminals[terminal];
+        if (td) td.batchNo = synthBatch;
+      });
+    }
+  };
   const speedpointByDate: SpDateRow[] = monthCashups.map(c => {
     const termMap: SpDateRow['terminals'] = {};
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
