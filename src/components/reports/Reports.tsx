@@ -668,8 +668,19 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
 
   if (bpPayTerminal) {
-    applyBpPaySumMatching(prevBankParsed, prevSpeedpointByDate, bpPayTerminal);
+    applyBpPaySumMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, bpPayTerminal);
   }
+
+  const openingBankLookup: Record<string, { amount: number; ids: string[] }> = {};
+  [...prevBankParsed, ...bankParsed].forEach(bp => {
+    if (!bp.batch) return;
+    if (prevManuallyMatchedIds.has(bp.bankLineId) || manuallyMatchedIds.has(bp.bankLineId)) return;
+    const k = `${bp.terminal}|${bp.batch}`;
+    if (!openingBankLookup[k]) openingBankLookup[k] = { amount: 0, ids: [] };
+    openingBankLookup[k].amount += bp.amount;
+    openingBankLookup[k].ids.push(bp.bankLineId);
+  });
+  const openingAutoMatchedIds = new Set<string>();
 
   // Find unmatched batches from previous month
   type OBRow = { date: string; terminal: string; batchNo: string; cashupAmount: number; bankAmount: number; diff: number; manualBankAmount: number };
@@ -686,7 +697,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       if (hasMeaningfulBatch && prevConsumedBatchKeys.has(batchKey)) return;
       if (hasMeaningfulBatch) prevConsumedBatchKeys.add(batchKey);
       
-      const autoBankAmt = prevBankLookup[batchKey] ?? 0;
+      const openingAutoMatch = openingBankLookup[batchKey];
+      const autoBankAmt = openingAutoMatch?.amount ?? 0;
       
       // Check manual matches from previous month
       const prevManualKey = `${r.date}|${t}`;
@@ -700,7 +712,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
         const obManualLines = manualMatches[obKey] || [];
         const obManualAmt = obManualLines.reduce((s, ml) => s + ml.amount, 0);
         const finalDiff = diff - obManualAmt;
-      if (Math.abs(finalDiff) <= 0.01) return;
+        if (Math.abs(finalDiff) <= 0.01) {
+          openingAutoMatch?.ids.forEach(id => openingAutoMatchedIds.add(id));
+          return;
+        }
         // Show in OB whether still outstanding or fully matched (so user sees it as cleared)
         openingBalanceRows.push({
           date: r.date,
