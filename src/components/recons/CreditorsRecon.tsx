@@ -101,6 +101,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
 
   const FUEL_CREDITORS = ["Engen", "F2K"];
   const isFuelCreditor = (s: string) => FUEL_CREDITORS.some((fc) => fc.toUpperCase() === s.toUpperCase());
+  const isBpCreditor = (s: string) => s.toUpperCase() === "BP";
 
   // EFT invoices from manager daily entries for this month
   const monthManagers = managerEntries.filter((e) => e.date.startsWith(filterMonth));
@@ -137,7 +138,8 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
   // Master list excluding Sundry Supplier itself (we replace it with per-vendor rows)
   const masterList = [...eftSuppliers].filter((s) => s !== SUNDRY_SUPPLIER).sort();
   const allSuppliers = [...new Set([...masterList, ...unrecognisedSuppliers, ...sundryKeys])];
-  const suppliers = allSuppliers.filter((s) => !isFuelCreditor(s));
+  const suppliers = allSuppliers.filter((s) => !isFuelCreditor(s) && !isBpCreditor(s));
+  const bpSuppliers = allSuppliers.filter((s) => isBpCreditor(s));
   const fuelSuppliers = allSuppliers.filter((s) => isFuelCreditor(s));
 
   const isUnrecognised = (s: string) => unrecognisedSuppliers.includes(s);
@@ -155,7 +157,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
       .trim();
 
   const supplierByNormalized = new Map(
-    [...suppliers, ...fuelSuppliers].map((supplier) => [normalizeName(supplier), supplier]),
+    [...suppliers, ...bpSuppliers, ...fuelSuppliers].map((supplier) => [normalizeName(supplier), supplier]),
   );
 
   const resolveSupplier = (preferredNames: string[]): string | null => {
@@ -206,7 +208,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
   const supplierWeekly: Record<string, WeekData[]> = {};
   const supplierInvoiceEntries: Record<string, BreakdownEntry[][]> = {};
 
-  [...suppliers, ...fuelSuppliers].forEach((supplier) => {
+  [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
     const weeks: WeekData[] = sundays.map(() => ({ invoices: 0, payments: 0 }));
     const invEntries: BreakdownEntry[][] = sundays.map(() => []);
 
@@ -278,7 +280,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
     if (!isFirstMonth && prevMonth) {
       const prevMonthManagers = managerEntries.filter((e) => e.date.startsWith(prevMonth));
 
-      [...suppliers, ...fuelSuppliers].forEach((supplier) => {
+      [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
         // If there's already a manually-entered OB for this month, keep it
         if (openingBalances[supplier] !== undefined) return;
 
@@ -391,7 +393,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
           size="sm"
           variant="outline"
           onClick={() => {
-            const allSup = [...suppliers, ...fuelSuppliers];
+            const allSup = [...suppliers, ...bpSuppliers, ...fuelSuppliers];
             const headers = [
               "Supplier",
               "Opening Balance",
@@ -421,6 +423,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
         )}
       </div>
       {renderTable(`Creditors Reconciliation — ${format(monthStart, "MMMM yyyy")}`, suppliers)}
+      {bpSuppliers.length > 0 && renderTable(`BP — ${format(monthStart, "MMMM yyyy")}`, bpSuppliers)}
       {fuelSuppliers.length > 0 && renderTable(`Fuel Creditors — ${format(monthStart, "MMMM yyyy")}`, fuelSuppliers)}
     </div>
   );
