@@ -542,6 +542,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     const terminalNumber = extractTerminalNumber(t);
     if (terminalNumber) TERMINAL_NUM_MAP[t] = terminalNumber;
   });
+  const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
+  const bpRewardsTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPREWARDS')) || '';
 
   // Parse bank lines: extract batch number from description and build lookup by terminal+batch
   const bankParsed: BankParsedLine[] = [];
@@ -549,7 +551,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
     // BP Rewards lines ("SB EFTPOS SET ...") never reconcile against speedpoint
     // cashups — surface them in the Unmatched panel so the user can see them.
     if (/SB\s+EFTPOS\s+SET\b/i.test(l.description)) {
-      bankParsed.push({ terminal: 'BP Rewards', batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
+      if (bpRewardsTerminal) bankParsed.push({ terminal: bpRewardsTerminal, batch: '', amount: l.amount, date: l.transaction_date, description: l.description, idx, bankLineId: l.id });
       return;
     }
     const canonicalTerminal = getCanonicalSpeedpointTerminal(l.matched_terminal, SP_TERMINALS);
@@ -566,7 +568,6 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // for the BP pay terminal and find the smallest contiguous group whose totals
   // match the bank amount. We then synthesise a shared batch key on both sides so
   // the existing terminal|batch matcher can do the rest.
-  const bpPayTerminal = SP_TERMINALS.find(t => t.toUpperCase().replace(/[^A-Z0-9]/g, '').includes('BPPAY')) || '';
   if (bpPayTerminal) {
     applyBpPaySumMatching(bankParsed, speedpointByDate, bpPayTerminal);
   }
