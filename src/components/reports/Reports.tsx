@@ -1503,7 +1503,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                           const matchData = speedpointMatches[rowIdx];
                           const allMatched = bankLines.length > 0 && visibleTerminals.every(t => {
                             const td = r.terminals[t];
-                            return !td || td.total === 0 || matchData[t]?.matched;
+                            return !td || td.total === 0 || matchData[t]?.matched || isDiffCleared(r.date, t);
                           });
                           return (
                             <TableRow key={r.date} className={allMatched ? 'bg-green-50 dark:bg-green-950/20' : 'hover:bg-muted/30'}>
