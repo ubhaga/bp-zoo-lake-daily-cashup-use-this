@@ -138,7 +138,8 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
   // Master list excluding Sundry Supplier itself (we replace it with per-vendor rows)
   const masterList = [...eftSuppliers].filter((s) => s !== SUNDRY_SUPPLIER).sort();
   const allSuppliers = [...new Set([...masterList, ...unrecognisedSuppliers, ...sundryKeys])];
-  const suppliers = allSuppliers.filter((s) => !isFuelCreditor(s));
+  const suppliers = allSuppliers.filter((s) => !isFuelCreditor(s) && !isBpCreditor(s));
+  const bpSuppliers = allSuppliers.filter((s) => isBpCreditor(s));
   const fuelSuppliers = allSuppliers.filter((s) => isFuelCreditor(s));
 
   const isUnrecognised = (s: string) => unrecognisedSuppliers.includes(s);
