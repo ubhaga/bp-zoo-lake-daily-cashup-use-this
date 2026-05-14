@@ -470,6 +470,42 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       });
     }
   };
+  const applyUnbatchedBankGroupMatching = (
+    parsedLines: BankParsedLine[],
+    dateRows: Array<{ date: string; terminals: SpDateRow['terminals'] }>,
+    terminal: string,
+  ) => {
+    if (!terminal) return;
+    const claimedBankIds = new Set<string>();
+    const rows = dateRows
+      .filter(r => (r.terminals[terminal]?.total ?? 0) > 0.005)
+      .slice()
+      .sort((a, b) => parseBankReconDate(a.date) - parseBankReconDate(b.date));
+
+    rows.forEach(row => {
+      const td = row.terminals[terminal];
+      if (!td || (td.batchNo && td.batchNo.trim().toUpperCase() !== 'X')) return;
+      const rowTs = parseBankReconDate(row.date);
+      const candidates = parsedLines.filter(bp => {
+        if (bp.terminal !== terminal || bp.batch || claimedBankIds.has(bp.bankLineId)) return false;
+        const bankTs = parseBankReconDate(bp.date);
+        return bankTs > rowTs && bankTs - rowTs <= 7 * 24 * 60 * 60 * 1000;
+      });
+      const byBankDate = new Map<string, BankParsedLine[]>();
+      candidates.forEach(bp => byBankDate.set(bp.date, [...(byBankDate.get(bp.date) ?? []), bp]));
+      const match = [...byBankDate.entries()]
+        .sort((a, b) => parseBankReconDate(a[0]) - parseBankReconDate(b[0]))
+        .find(([, lines]) => Math.abs(lines.reduce((s, bp) => s + bp.amount, 0) - td.total) < 0.01);
+      if (!match) return;
+      const lines = match[1];
+      const synthBatch = `SET-${row.date}-${terminal}`;
+      td.batchNo = synthBatch;
+      lines.forEach(bp => {
+        bp.batch = synthBatch;
+        claimedBankIds.add(bp.bankLineId);
+      });
+    });
+  };
   const speedpointByDate: SpDateRow[] = monthCashups.map(c => {
     const termMap: SpDateRow['terminals'] = {};
     SP_TERMINALS.forEach(t => { termMap[t] = { batchNo: '', shopAmount: 0, optAmount: 0, total: 0 }; });
