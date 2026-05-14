@@ -903,10 +903,12 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   const accountsTotal = accountsReport.reduce((s, r) => s + r.amount, 0);
 
   // Invoice report
-  const invoiceReport = monthManagers.flatMap(e => [
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState<'all' | 'Payout' | 'EFT'>('all');
+  const invoiceReportAll = monthManagers.flatMap(e => [
     ...e.payoutInvoices.map(i => ({ date: e.date, type: 'Payout', supplier: i.supplier, category: i.category, docNum: i.branchDocNum, inclusive: i.inclusive, vat: i.vat })),
     ...e.eftInvoices.map(i => ({ date: e.date, type: 'EFT', supplier: i.supplier, category: i.category, docNum: i.branchDocNum, inclusive: i.inclusive, vat: i.vat })),
   ]);
+  const invoiceReport = invoiceTypeFilter === 'all' ? invoiceReportAll : invoiceReportAll.filter(r => r.type === invoiceTypeFilter);
   const invoiceTotal = invoiceReport.reduce((s, r) => s + r.inclusive, 0);
   const invoiceVatTotal = invoiceReport.reduce((s, r) => s + r.vat, 0);
 
