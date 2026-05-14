@@ -681,7 +681,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       if (isPrevDiffCleared(r.date, t)) return;
       // For auto-match dedup, use terminal+batch — but only skip if batch is non-empty and already consumed
       const batchKey = `${t}|${td.batchNo}`;
-      const hasMeaningfulBatch = td.batchNo && td.batchNo !== 'X' && td.batchNo !== '';
+      const hasMeaningfulBatch = td.batchNo && td.batchNo.trim().toUpperCase() !== 'X' && td.batchNo.trim() !== '';
       if (hasMeaningfulBatch && prevConsumedBatchKeys.has(batchKey)) return;
       if (hasMeaningfulBatch) prevConsumedBatchKeys.add(batchKey);
       
