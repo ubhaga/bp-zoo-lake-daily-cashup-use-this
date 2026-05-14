@@ -706,6 +706,10 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
       const prevManualAmt = prevManualLines.reduce((s, ml) => s + ml.amount, 0);
       const totalBank = autoBankAmt + prevManualAmt;
       const diff = td.total - totalBank;
+      if (Math.abs(diff) <= 0.01) {
+        openingAutoMatch?.ids.forEach(id => openingAutoMatchedIds.add(id));
+        return;
+      }
       if (Math.abs(diff) > 0.01) {
         // Check if this OB row has manual matches in the current month
         const obKey = `OB-${r.date}|${t}`;
@@ -738,6 +742,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   // Unmatched: bank lines not auto-matched and not manually matched
   // Use consumedBankKeys from matching above instead of re-deriving
   const unmatchedTerminalLines = bankParsed.filter(bp => {
+    if (openingAutoMatchedIds.has(bp.bankLineId)) return false;
     if (manuallyMatchedIds.has(bp.bankLineId)) return false;
     if (unmatchedAutoIds.has(bp.bankLineId)) return true;
     if (!bp.batch) return true;
