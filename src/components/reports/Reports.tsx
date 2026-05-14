@@ -1809,7 +1809,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
 
                       return (
                         <>
-                          <TableRow><TableCell colSpan={7} className="pt-6 pb-1"><span className="font-semibold text-sm">Summary by Category — EFTs</span></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={7} className="pt-6 pb-1"><span className="font-semibold text-sm">2. Summary by Category — EFTs</span></TableCell></TableRow>
 
                           {otherCats.length > 0 && (
                             <>
