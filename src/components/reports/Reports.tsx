@@ -709,16 +709,16 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
 
   if (bpPayTerminal) {
-    applyBpPaySumMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, bpPayTerminal);
+    applyBpPaySumMatching(prevBankParsed, prevSpeedpointByDate, bpPayTerminal);
   }
   SP_TERMINALS
     .filter(t => t !== bpPayTerminal)
-    .forEach(t => applyUnbatchedBankGroupMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, t));
+    .forEach(t => applyUnbatchedBankGroupMatching(prevBankParsed, prevSpeedpointByDate, t));
 
   const openingBankLookup: Record<string, { amount: number; ids: string[] }> = {};
-  [...prevBankParsed, ...bankParsed].forEach(bp => {
+  prevBankParsed.forEach(bp => {
     if (!bp.batch) return;
-    if (prevManuallyMatchedIds.has(bp.bankLineId) || manuallyMatchedIds.has(bp.bankLineId)) return;
+    if (prevManuallyMatchedIds.has(bp.bankLineId)) return;
     const k = `${bp.terminal}|${bp.batch}`;
     if (!openingBankLookup[k]) openingBankLookup[k] = { amount: 0, ids: [] };
     openingBankLookup[k].amount += bp.amount;
@@ -755,16 +755,12 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
         return;
       }
       if (Math.abs(diff) > 0.01) {
-        // Check if this OB row has manual matches in the current month
+        // Current-month manual matches clear the carried-forward item inside April,
+        // but the row must still appear because it was outstanding at March month-end.
         const obKey = `OB-${r.date}|${t}`;
         const obManualLines = manualMatches[obKey] || [];
         const obManualAmt = obManualLines.reduce((s, ml) => s + ml.amount, 0);
         const finalDiff = diff - obManualAmt;
-        if (Math.abs(finalDiff) <= 0.01) {
-          openingAutoMatch?.ids.forEach(id => openingAutoMatchedIds.add(id));
-          return;
-        }
-        // Show in OB whether still outstanding or fully matched (so user sees it as cleared)
         openingBalanceRows.push({
           date: r.date,
           terminal: t,
