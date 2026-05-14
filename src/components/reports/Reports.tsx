@@ -709,16 +709,16 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
   });
 
   if (bpPayTerminal) {
-    applyBpPaySumMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, bpPayTerminal);
+    applyBpPaySumMatching(prevBankParsed, prevSpeedpointByDate, bpPayTerminal);
   }
   SP_TERMINALS
     .filter(t => t !== bpPayTerminal)
-    .forEach(t => applyUnbatchedBankGroupMatching([...prevBankParsed, ...bankParsed], prevSpeedpointByDate, t));
+    .forEach(t => applyUnbatchedBankGroupMatching(prevBankParsed, prevSpeedpointByDate, t));
 
   const openingBankLookup: Record<string, { amount: number; ids: string[] }> = {};
-  [...prevBankParsed, ...bankParsed].forEach(bp => {
+  prevBankParsed.forEach(bp => {
     if (!bp.batch) return;
-    if (prevManuallyMatchedIds.has(bp.bankLineId) || manuallyMatchedIds.has(bp.bankLineId)) return;
+    if (prevManuallyMatchedIds.has(bp.bankLineId)) return;
     const k = `${bp.terminal}|${bp.batch}`;
     if (!openingBankLookup[k]) openingBankLookup[k] = { amount: 0, ids: [] };
     openingBankLookup[k].amount += bp.amount;
