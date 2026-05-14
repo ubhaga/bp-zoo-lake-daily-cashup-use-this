@@ -423,6 +423,7 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
         )}
       </div>
       {renderTable(`Creditors Reconciliation — ${format(monthStart, "MMMM yyyy")}`, suppliers)}
+      {bpSuppliers.length > 0 && renderTable(`BP — ${format(monthStart, "MMMM yyyy")}`, bpSuppliers)}
       {fuelSuppliers.length > 0 && renderTable(`Fuel Creditors — ${format(monthStart, "MMMM yyyy")}`, fuelSuppliers)}
     </div>
   );
