@@ -18,6 +18,7 @@ export function parseDayEndReportMetrics(content: string | null | undefined): Da
     const debtors = extractNetAccDebtors(content);
     return {
       payoutTotal: extractDayEndPayouts(content),
+      payoutsExcludeLotto: true,
       shopIncome: extractNetAccSalesTotal(content),
       optIncome: null,
       shopAccountsTotal: debtors.length ? debtors.reduce((s, d) => s + d.amount, 0) : null,
