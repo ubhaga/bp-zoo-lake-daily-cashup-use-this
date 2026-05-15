@@ -442,10 +442,12 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const shopPayoutsTotal = form.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const shopNetSales = form.shop.income - form.shop.returns - form.shop.returns_today;
   const shopTotalReceipts = form.shop.receipts.reduce((s, r) => s + r.amount, 0);
-  // In day-end-payouts mode, shop.payouts is the synthetic NET line
+  // In day-end-payouts mode (Branch/ESO), shop.payouts is the synthetic NET line
   // (gross day-end payouts − lotto), so we must NOT subtract lottoPayouts again.
+  // For NetAcc the day-end Pay Outs total EXCLUDES lotto, so the synthetic line
+  // equals the day-end value and lotto must still be subtracted explicitly.
   // Pre-cutoff (manual entry) mode: payouts are GROSS, so lotto is subtracted explicitly.
-  const shopTotalTakings = useDayEndPayouts
+  const shopTotalTakings = useDayEndPayouts && !dayEndPayoutsIsNetAcc
     ? shopNetSales - shopPayoutsTotal + shopTotalReceipts
     : shopNetSales - shopPayoutsTotal - form.shop.lottoPayouts + shopTotalReceipts;
 
