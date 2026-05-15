@@ -31,8 +31,11 @@ function computeDaySummary(c: DailyCashup, report?: DayEndReportMetrics | null) 
   const savedPayoutsTotal = c.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const lottoPayouts = c.shop.lottoPayouts;
   const useReportPayouts = c.date >= '2026-03-01' && report?.payoutTotal != null;
+  const netAccPayouts = !!report?.payoutsExcludeLotto;
   const payoutsTotal = useReportPayouts
-    ? Math.max(0, (report!.payoutTotal as number) - lottoPayouts)
+    ? (netAccPayouts
+        ? (report!.payoutTotal as number)
+        : Math.max(0, (report!.payoutTotal as number) - lottoPayouts))
     : savedPayoutsTotal;
   const totalPayouts = payoutsTotal + lottoPayouts;
 
