@@ -5,6 +5,7 @@ import { extractNetAccDebtors, extractNetAccSalesTotal, isNetAccContent } from "
 
 export interface DayEndReportMetrics {
   payoutTotal: number | null;
+  payoutsExcludeLotto?: boolean;
   shopIncome: number | null;
   optIncome: number | null;
   shopAccountsTotal: number | null;
