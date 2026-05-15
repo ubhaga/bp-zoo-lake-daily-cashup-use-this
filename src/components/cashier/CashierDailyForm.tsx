@@ -217,11 +217,13 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   // lotto payouts, and that net value is what downstream manager invoice linking uses.
   const useDayEndPayouts = selectedDate >= DAY_END_PAYOUTS_CUTOFF;
   const [dayEndPayoutsAmount, setDayEndPayoutsAmount] = useState<number | null>(null);
+  const [dayEndPayoutsIsNetAcc, setDayEndPayoutsIsNetAcc] = useState(false);
   const [dayEndStatus, setDayEndStatus] = useState<"idle" | "loading" | "loaded" | "missing">("idle");
 
   useEffect(() => {
     if (!useDayEndPayouts) {
       setDayEndPayoutsAmount(null);
+      setDayEndPayoutsIsNetAcc(false);
       setDayEndStatus("idle");
       return;
     }
@@ -236,12 +238,18 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
       if (cancelled) return;
       const amt = data?.content ? extractDayEndPayouts(data.content) : null;
       setDayEndPayoutsAmount(amt);
+      setDayEndPayoutsIsNetAcc(!!data?.content && isNetAccContent(data.content));
       setDayEndStatus(amt != null ? "loaded" : "missing");
     })();
     return () => { cancelled = true; };
   }, [selectedDate, useDayEndPayouts]);
 
-  const netDayEndPayoutsAmount = Math.round((((dayEndPayoutsAmount ?? 0) - (form.shop.lottoPayouts ?? 0)) + Number.EPSILON) * 100) / 100;
+  // For NetAcc day-end reports, the Pay Outs total does NOT include lotto payouts,
+  // so the Section 2 net cash payouts equals the day-end value as-is. For Branch/ESO
+  // the day-end gross includes lotto, so we subtract lotto to get net cash payouts.
+  const netDayEndPayoutsAmount = dayEndPayoutsIsNetAcc
+    ? Math.round(((dayEndPayoutsAmount ?? 0) + Number.EPSILON) * 100) / 100
+    : Math.round((((dayEndPayoutsAmount ?? 0) - (form.shop.lottoPayouts ?? 0)) + Number.EPSILON) * 100) / 100;
 
   // Sync the synthetic NET payout line into form.shop.payouts so all downstream
   // calculations (recons, AFS, manager invoices) use day end payouts less lotto payouts.
@@ -434,10 +442,12 @@ export function CashierDailyForm({ selectedDate, onDateChange }: Props) {
   const shopPayoutsTotal = form.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const shopNetSales = form.shop.income - form.shop.returns - form.shop.returns_today;
   const shopTotalReceipts = form.shop.receipts.reduce((s, r) => s + r.amount, 0);
-  // In day-end-payouts mode, shop.payouts is the synthetic NET line
+  // In day-end-payouts mode (Branch/ESO), shop.payouts is the synthetic NET line
   // (gross day-end payouts − lotto), so we must NOT subtract lottoPayouts again.
+  // For NetAcc the day-end Pay Outs total EXCLUDES lotto, so the synthetic line
+  // equals the day-end value and lotto must still be subtracted explicitly.
   // Pre-cutoff (manual entry) mode: payouts are GROSS, so lotto is subtracted explicitly.
-  const shopTotalTakings = useDayEndPayouts
+  const shopTotalTakings = useDayEndPayouts && !dayEndPayoutsIsNetAcc
     ? shopNetSales - shopPayoutsTotal + shopTotalReceipts
     : shopNetSales - shopPayoutsTotal - form.shop.lottoPayouts + shopTotalReceipts;
 
