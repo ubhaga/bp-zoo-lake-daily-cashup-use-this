@@ -54,13 +54,16 @@ export function getCashierBalanceMetrics(
 
   const savedPayoutsTotal = cashup.shop.payouts.reduce((s, p) => s + p.amount, 0);
   const useDayEndPayouts = dateStr >= "2026-03-01";
+  const netAccPayouts = !!report?.payoutsExcludeLotto;
   const shopPayoutsTotal = useDayEndPayouts && report?.payoutTotal != null
-    ? Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0))
+    ? (netAccPayouts
+        ? report.payoutTotal
+        : Math.max(0, report.payoutTotal - (cashup.shop.lottoPayouts ?? 0)))
     : (savedPayoutsTotal !== 0
         ? savedPayoutsTotal
         : 0);
   const shopReceipts = cashup.shop.receipts.reduce((s, r) => s + r.amount, 0);
-  const shopTakings = useDayEndPayouts
+  const shopTakings = useDayEndPayouts && !netAccPayouts
     ? shopNetSales - shopPayoutsTotal + shopReceipts
     : shopNetSales - shopPayoutsTotal - cashup.shop.lottoPayouts + shopReceipts;
 
