@@ -124,6 +124,69 @@ export type Database = {
         }
         Relationships: []
       }
+      bp_invoices: {
+        Row: {
+          amount_capital: number
+          amount_total: number | null
+          amount_vat: number
+          cashup_date: string | null
+          classified_by: string
+          created_at: string
+          description: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string | null
+          invoice_type: string
+          line_items: Json | null
+          month: string | null
+          pdf_filename: string | null
+          pdf_url: string | null
+          source_email: string | null
+          supplier: string
+          updated_at: string
+        }
+        Insert: {
+          amount_capital?: number
+          amount_total?: number | null
+          amount_vat?: number
+          cashup_date?: string | null
+          classified_by?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_date: string
+          invoice_number?: string | null
+          invoice_type: string
+          line_items?: Json | null
+          month?: string | null
+          pdf_filename?: string | null
+          pdf_url?: string | null
+          source_email?: string | null
+          supplier?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_capital?: number
+          amount_total?: number | null
+          amount_vat?: number
+          cashup_date?: string | null
+          classified_by?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string | null
+          invoice_type?: string
+          line_items?: Json | null
+          month?: string | null
+          pdf_filename?: string | null
+          pdf_url?: string | null
+          source_email?: string | null
+          supplier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cash_recon_manual_matches: {
         Row: {
           amount: number
@@ -819,7 +882,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      bp_invoices_monthly_summary: {
+        Row: {
+          invoice_count: number | null
+          invoice_type: string | null
+          month: string | null
+          total_amount: number | null
+          total_capital: number | null
+          total_vat: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
