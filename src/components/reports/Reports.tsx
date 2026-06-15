@@ -1694,7 +1694,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                       className="cursor-grab active:cursor-grabbing hover:bg-muted/30 border-b last:border-b-0 px-3 py-2 text-xs flex flex-col gap-0.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-muted-foreground">{l.date}</span>
+                        <span className="font-mono text-muted-foreground">{(() => { const ts = parseBankReconDate(l.date); return ts === Number.MAX_SAFE_INTEGER ? l.date : format(new Date(ts), 'dd/MM/yyyy'); })()}</span>
                         <span className="font-semibold"><CurrencyDisplay value={l.amount} /></span>
                       </div>
                       <div className="flex items-center gap-2">
