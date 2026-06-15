@@ -39,6 +39,12 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
 
   const [prevMonthBankLines, setPrevMonthBankLines] = useState<typeof bankLines>([]);
   const [prevMonthOB, setPrevMonthOB] = useState<Record<string, number>>({});
+  const [prevMonthAllocations, setPrevMonthAllocations] = useState<
+    { bank_line_id: string; recon_type: string; target_name: string }[]
+  >([]);
+  const [prevMonthAdjustments, setPrevMonthAdjustments] = useState<
+    { target_name: string; field: string; amount: number }[]
+  >([]);
   const [prevMonth, setPrevMonth] = useState("");
 
   const isFirstMonth = filterMonth <= "2026-03";
@@ -67,9 +73,15 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
     setEditingOB({});
 
     if (filterMonth > "2026-03") {
-      const [prevBankRes, prevObRes] = await Promise.all([
+      const [prevBankRes, prevObRes, prevAllocRes, prevAdjRes] = await Promise.all([
         supabase.from("bank_statement_lines").select("id, amount, description, transaction_date").eq("month", pm),
         supabase.from("creditor_opening_balances").select("*").eq("month", pm),
+        supabase.from("bank_line_allocations").select("bank_line_id, recon_type, target_name").eq("month", pm),
+        supabase
+          .from("recon_adjustments")
+          .select("target_name, field, amount")
+          .eq("month", pm)
+          .eq("recon_type", "creditor"),
       ]);
       setPrevMonthBankLines((prevBankRes.data ?? []) as typeof bankLines);
       const prevObMap: Record<string, number> = {};
@@ -77,9 +89,17 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
         prevObMap[r.supplier] = Number(r.amount);
       });
       setPrevMonthOB(prevObMap);
+      setPrevMonthAllocations(
+        (prevAllocRes.data ?? []) as { bank_line_id: string; recon_type: string; target_name: string }[],
+      );
+      setPrevMonthAdjustments(
+        (prevAdjRes.data ?? []) as { target_name: string; field: string; amount: number }[],
+      );
     } else {
       setPrevMonthBankLines([]);
       setPrevMonthOB({});
+      setPrevMonthAllocations([]);
+      setPrevMonthAdjustments([]);
     }
   }, [filterMonth]);
 
