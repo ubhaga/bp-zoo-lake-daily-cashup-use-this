@@ -352,11 +352,10 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
           });
 
         const closing = prevOB + totalInv - totalPay;
-        // Skip overwriting only when user has a manual OB AND there's no rolled activity
-        if (hasManualOB && closing === 0) return;
-        if (closing !== 0 || hasManualOB) {
+        if (closing !== 0) {
           result[supplier] = closing;
         }
+
       });
     }
 
