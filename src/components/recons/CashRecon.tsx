@@ -173,7 +173,13 @@ export function CashRecon({ filterMonth }: CashReconProps) {
         const remaining = Number(l.amount) - used;
         return { ...l, used, remaining };
       })
-      .filter(l => l.remaining > 0.005);
+      .filter(l => l.remaining > 0.005)
+      .sort((a, b) => {
+        const da = a.parsedDate ?? '';
+        const db = b.parsedDate ?? '';
+        if (da === db) return 0;
+        return da < db ? -1 : 1;
+      });
   }, [citLines, autoMatchedBankIds, manualByBankLine, isDeposita]);
 
   // Compute banking opening balance for Cash Connect only.
