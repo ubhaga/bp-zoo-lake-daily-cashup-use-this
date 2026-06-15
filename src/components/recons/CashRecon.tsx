@@ -817,7 +817,7 @@ export function CashRecon({ filterMonth }: CashReconProps) {
                 className="cursor-grab active:cursor-grabbing hover:bg-muted/30 border-b last:border-b-0 px-3 py-2 text-xs flex flex-col gap-0.5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-muted-foreground">{l.transaction_date}</span>
+                  <span className="font-mono text-muted-foreground">{(() => { const iso = parseBankStatementDate(l.transaction_date); return iso ? format(parseISO(iso), 'dd/MM/yyyy') : l.transaction_date; })()}</span>
                   <span className="font-semibold"><CurrencyDisplay value={l.remaining} /></span>
                 </div>
                 <div className="flex items-center gap-2">
