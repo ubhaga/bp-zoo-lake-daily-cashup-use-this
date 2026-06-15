@@ -39,6 +39,12 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
 
   const [prevMonthBankLines, setPrevMonthBankLines] = useState<typeof bankLines>([]);
   const [prevMonthOB, setPrevMonthOB] = useState<Record<string, number>>({});
+  const [prevMonthAllocations, setPrevMonthAllocations] = useState<
+    { bank_line_id: string; recon_type: string; target_name: string }[]
+  >([]);
+  const [prevMonthAdjustments, setPrevMonthAdjustments] = useState<
+    { target_name: string; field: string; amount: number }[]
+  >([]);
   const [prevMonth, setPrevMonth] = useState("");
 
   const isFirstMonth = filterMonth <= "2026-03";
@@ -67,9 +73,15 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
     setEditingOB({});
 
     if (filterMonth > "2026-03") {
-      const [prevBankRes, prevObRes] = await Promise.all([
+      const [prevBankRes, prevObRes, prevAllocRes, prevAdjRes] = await Promise.all([
         supabase.from("bank_statement_lines").select("id, amount, description, transaction_date").eq("month", pm),
         supabase.from("creditor_opening_balances").select("*").eq("month", pm),
+        supabase.from("bank_line_allocations").select("bank_line_id, recon_type, target_name").eq("month", pm),
+        supabase
+          .from("recon_adjustments")
+          .select("target_name, field, amount")
+          .eq("month", pm)
+          .eq("recon_type", "creditor"),
       ]);
       setPrevMonthBankLines((prevBankRes.data ?? []) as typeof bankLines);
       const prevObMap: Record<string, number> = {};
@@ -77,9 +89,17 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
         prevObMap[r.supplier] = Number(r.amount);
       });
       setPrevMonthOB(prevObMap);
+      setPrevMonthAllocations(
+        (prevAllocRes.data ?? []) as { bank_line_id: string; recon_type: string; target_name: string }[],
+      );
+      setPrevMonthAdjustments(
+        (prevAdjRes.data ?? []) as { target_name: string; field: string; amount: number }[],
+      );
     } else {
       setPrevMonthBankLines([]);
       setPrevMonthOB({});
+      setPrevMonthAllocations([]);
+      setPrevMonthAdjustments([]);
     }
   }, [filterMonth]);
 
@@ -281,10 +301,11 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
       const prevMonthManagers = managerEntries.filter((e) => e.date.startsWith(prevMonth));
 
       [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
-        // If there's already a manually-entered OB for this month, keep it
+        // Manual OB always wins
         if (openingBalances[supplier] !== undefined) return;
 
-        // Compute previous month closing: OB + invoices - payments
+
+        // Compute previous month closing: OB + invoices - payments (mirror of current-month logic)
         const prevOB = prevMonthOB[supplier] ?? 0;
         let totalInv = 0;
         let totalPay = 0;
@@ -303,17 +324,38 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
           });
         });
 
-        // Previous month payments from bank
+        // Previous month payments from bank — honour manual allocations first, then regex
         prevMonthBankLines.forEach((line) => {
-          const matched = matchSupplier(line.description);
+          const alloc = prevMonthAllocations.find(
+            (a) => a.bank_line_id === line.id && a.recon_type === "creditor",
+          );
+          const matched = alloc ? alloc.target_name : matchSupplier(line.description);
           if (matched !== supplier) return;
           totalPay += Math.abs(line.amount);
         });
+
+        // Deep Frozen CC payments from previous month manager daily
+        const isDeepFrozen = supplier.toLowerCase().replace(/\s+/g, "") === "deepfrozen";
+        if (isDeepFrozen) {
+          prevMonthManagers.forEach((entry) => {
+            const df = entry.deepFrozenCC ?? 0;
+            if (df > 0) totalPay += df;
+          });
+        }
+
+        // Apply prev month week adjustments
+        prevMonthAdjustments
+          .filter((a) => a.target_name === supplier)
+          .forEach((a) => {
+            if (a.field === "invoices") totalInv += Number(a.amount);
+            else if (a.field === "payments") totalPay += Number(a.amount);
+          });
 
         const closing = prevOB + totalInv - totalPay;
         if (closing !== 0) {
           result[supplier] = closing;
         }
+
       });
     }
 
@@ -324,6 +366,8 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
     prevMonth,
     prevMonthOB,
     prevMonthBankLines,
+    prevMonthAllocations,
+    prevMonthAdjustments,
     managerEntries,
     // suppliers/fuelSuppliers identities change each render (rebuilt above).
     // We intentionally exclude them and rely on the inputs above.
