@@ -34,12 +34,24 @@ import { PosSalesPerTank } from "@/components/fuel/PosSalesPerTank";
 import { useCashupStore } from "@/store/cashupStore";
 import { useMasterDataStore } from "@/store/masterDataStore";
 
+const SS = typeof window !== "undefined" ? window.sessionStorage : null;
+const getSS = (k: string, fallback: string) => {
+  try { return SS?.getItem(k) ?? fallback; } catch { return fallback; }
+};
+const setSS = (k: string, v: string) => { try { SS?.setItem(k, v); } catch { /* ignore */ } };
+
 export default function Index() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [afsSubTab, setAfsSubTab] = useState("jes");
-  const [fuelSubTab, setFuelSubTab] = useState("fuel-dashboard");
-  const [uploadsSubTab, setUploadsSubTab] = useState("bank");
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [activeTab, setActiveTab] = useState(() => getSS("ui:activeTab", "dashboard"));
+  const [afsSubTab, setAfsSubTab] = useState(() => getSS("ui:afsSubTab", "jes"));
+  const [fuelSubTab, setFuelSubTab] = useState(() => getSS("ui:fuelSubTab", "fuel-dashboard"));
+  const [uploadsSubTab, setUploadsSubTab] = useState(() => getSS("ui:uploadsSubTab", "bank"));
+  const [selectedDate, setSelectedDate] = useState(() => getSS("ui:selectedDate", format(new Date(), "yyyy-MM-dd")));
+
+  useEffect(() => { setSS("ui:activeTab", activeTab); }, [activeTab]);
+  useEffect(() => { setSS("ui:afsSubTab", afsSubTab); }, [afsSubTab]);
+  useEffect(() => { setSS("ui:fuelSubTab", fuelSubTab); }, [fuelSubTab]);
+  useEffect(() => { setSS("ui:uploadsSubTab", uploadsSubTab); }, [uploadsSubTab]);
+  useEffect(() => { setSS("ui:selectedDate", selectedDate); }, [selectedDate]);
   const cashupLoaded = useCashupStore((s) => s.loaded);
   const loadCashups = useCashupStore((s) => s.loadAll);
   const masterLoaded = useMasterDataStore((s) => s.loaded);
