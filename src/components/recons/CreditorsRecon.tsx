@@ -301,9 +301,9 @@ export function CreditorsRecon({ filterMonth }: CreditorsReconProps) {
       const prevMonthManagers = managerEntries.filter((e) => e.date.startsWith(prevMonth));
 
       [...suppliers, ...bpSuppliers, ...fuelSuppliers].forEach((supplier) => {
-        // Manual OB takes precedence ONLY if explicitly set (non-zero or row exists with intent).
-        // We always recompute the rolled-forward closing so that current opening = prev closing.
-        const hasManualOB = openingBalances[supplier] !== undefined;
+        // Manual OB always wins
+        if (openingBalances[supplier] !== undefined) return;
+
 
         // Compute previous month closing: OB + invoices - payments (mirror of current-month logic)
         const prevOB = prevMonthOB[supplier] ?? 0;
