@@ -1338,7 +1338,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead rowSpan={2} className="align-bottom">Date</TableHead>
+                      <TableHead rowSpan={2} className="align-bottom sticky left-0 z-30 bg-background">Date</TableHead>
                       {visibleTerminals.map(t => (
                         <TableHead key={t} colSpan={bankLines.length > 0 ? 4 : 2} className="text-center border-l">{t}</TableHead>
                       ))}
@@ -1381,7 +1381,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                                 const isMatched = Math.abs(ob.diff) < 0.01;
                                 return (
                                   <TableRow key={`ob-${obIdx}`} className={`${isMatched ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50/50 dark:bg-amber-950/10'} hover:bg-muted/30`}>
-                                    <TableCell className="text-sm font-mono text-muted-foreground">{format(new Date(ob.date), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell className="text-sm font-mono text-muted-foreground sticky left-0 z-10 bg-inherit">{format(new Date(ob.date), 'dd/MM/yyyy')}</TableCell>
                                     {visibleTerminals.map(t => {
                                       if (t !== ob.terminal) {
                                         return (
@@ -1476,7 +1476,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                               })}
                             {/* OB subtotal */}
                             <TableRow className="bg-amber-100/50 dark:bg-amber-950/20 border-b-2 font-semibold">
-                              <TableCell className="text-sm">OB Total</TableCell>
+                              <TableCell className="text-sm sticky left-0 z-10 bg-inherit">OB Total</TableCell>
                               {visibleTerminals.map(t => {
                                 const termOBRows = openingBalanceRows.filter(ob => ob.terminal === t);
                                 const obCashup = termOBRows.reduce((s, ob) => s + ob.cashupAmount, 0);
@@ -1506,8 +1506,8 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                             return !td || td.total === 0 || matchData[t]?.matched || isDiffCleared(r.date, t);
                           });
                           return (
-                            <TableRow key={r.date} className={allMatched ? 'bg-green-50 dark:bg-green-950/20' : 'hover:bg-muted/30'}>
-                              <TableCell className="text-sm font-mono">{format(new Date(r.date), 'dd/MM/yyyy')}</TableCell>
+                            <TableRow key={r.date} className={allMatched ? 'bg-green-50 dark:bg-green-950/20' : 'bg-card hover:bg-muted/30'}>
+                              <TableCell className="text-sm font-mono sticky left-0 z-10 bg-inherit">{format(new Date(r.date), 'dd/MM/yyyy')}</TableCell>
                               {visibleTerminals.map(t => {
                                 const td = r.terminals[t];
                                 const m = matchData[t];
@@ -1618,7 +1618,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                           );
                         })}
                         <TableRow className="bg-secondary font-semibold border-t-2">
-                          <TableCell>TOTAL (incl. OB)</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-inherit">TOTAL (incl. OB)</TableCell>
                           {visibleTerminals.map(t => {
                             const obRows = openingBalanceRows.filter(ob => ob.terminal === t);
                             const obCashup = obRows.reduce((s, ob) => s + ob.cashupAmount, 0);
