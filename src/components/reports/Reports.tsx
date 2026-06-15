@@ -1506,7 +1506,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                             return !td || td.total === 0 || matchData[t]?.matched || isDiffCleared(r.date, t);
                           });
                           return (
-                            <TableRow key={r.date} className={allMatched ? 'bg-green-50 dark:bg-green-950/20' : 'hover:bg-muted/30'}>
+                            <TableRow key={r.date} className={allMatched ? 'bg-green-50 dark:bg-green-950/20' : 'bg-card hover:bg-muted/30'}>
                               <TableCell className="text-sm font-mono sticky left-0 z-10 bg-inherit">{format(new Date(r.date), 'dd/MM/yyyy')}</TableCell>
                               {visibleTerminals.map(t => {
                                 const td = r.terminals[t];
