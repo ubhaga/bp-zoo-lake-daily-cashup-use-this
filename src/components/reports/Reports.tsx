@@ -1338,7 +1338,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead rowSpan={2} className="align-bottom">Date</TableHead>
+                      <TableHead rowSpan={2} className="align-bottom sticky left-0 z-30 bg-background">Date</TableHead>
                       {visibleTerminals.map(t => (
                         <TableHead key={t} colSpan={bankLines.length > 0 ? 4 : 2} className="text-center border-l">{t}</TableHead>
                       ))}
