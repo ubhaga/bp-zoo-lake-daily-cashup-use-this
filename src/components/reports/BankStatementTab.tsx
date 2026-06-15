@@ -186,9 +186,10 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
         return;
       }
 
-      // Logical-key dedup (date|description|amount) — more robust than raw_line,
-      // since a bank may re-export the same transaction with different whitespace
-      // or quoting. The DB also enforces this via a unique index as a safety net.
+      // Logical-key dedup (isoDate|description|amount) — uses the normalized
+      // ISO date so re-exports with different date formats (e.g. 05/05/2026
+      // vs 2026/05/05) collapse to the same key. The DB unique index now
+      // also stores ISO dates, so it enforces the same rule atomically.
       const existingKeys = new Set(
         lines.map(l => `${l.transaction_date}|${l.description}|${l.amount}`)
       );
@@ -223,19 +224,20 @@ export function BankStatementTab({ filterMonth, monthLabel }: Props) {
           continue;
         }
 
-        const key = `${fields[dateIdx]}|${desc}|${amt}`;
+        const key = `${isoDate}|${desc}|${amt}`;
         if (existingKeys.has(key) || seenInBatch.has(key)) { duplicates++; continue; }
         seenInBatch.add(key);
 
         newRows.push({
           month: filterMonth,
-          transaction_date: fields[dateIdx],
+          transaction_date: isoDate,
           description: desc,
           amount: amt,
           matched_terminal: matchTerminal(desc),
           raw_line: rawLine,
         });
       }
+
 
       if (newRows.length > 0) {
         // Upsert with ignoreDuplicates against the unique index
