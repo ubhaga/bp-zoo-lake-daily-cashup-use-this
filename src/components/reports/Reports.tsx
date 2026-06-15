@@ -1381,7 +1381,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                                 const isMatched = Math.abs(ob.diff) < 0.01;
                                 return (
                                   <TableRow key={`ob-${obIdx}`} className={`${isMatched ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50/50 dark:bg-amber-950/10'} hover:bg-muted/30`}>
-                                    <TableCell className="text-sm font-mono text-muted-foreground">{format(new Date(ob.date), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell className="text-sm font-mono text-muted-foreground sticky left-0 z-10 bg-inherit">{format(new Date(ob.date), 'dd/MM/yyyy')}</TableCell>
                                     {visibleTerminals.map(t => {
                                       if (t !== ob.terminal) {
                                         return (
