@@ -1618,7 +1618,7 @@ export function Reports({ mode = 'reports', onNavigateToDate, selectedDate }: { 
                           );
                         })}
                         <TableRow className="bg-secondary font-semibold border-t-2">
-                          <TableCell>TOTAL (incl. OB)</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-inherit">TOTAL (incl. OB)</TableCell>
                           {visibleTerminals.map(t => {
                             const obRows = openingBalanceRows.filter(ob => ob.terminal === t);
                             const obCashup = obRows.reduce((s, ob) => s + ob.cashupAmount, 0);
